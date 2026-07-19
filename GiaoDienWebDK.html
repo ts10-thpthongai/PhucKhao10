@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<base target="_top">
+
+<style>
+
+body{
+
+font-family:Arial,sans-serif;
+
+margin:18px;
+
+font-size:14px;
+
+color:#333;
+
+}
+
+h2{
+
+margin-top:0;
+
+color:#1565c0;
+
+}
+
+.box{
+
+border:1px solid #dcdcdc;
+
+border-radius:8px;
+
+padding:14px;
+
+margin-top:14px;
+
+}
+
+.title{
+
+font-weight:bold;
+
+color:#1565c0;
+
+margin-bottom:10px;
+
+}
+
+.info-table{
+
+width:100%;
+
+border-collapse:collapse;
+
+}
+
+.info-table td{
+
+padding:8px;
+
+border-bottom:1px solid #eee;
+
+vertical-align:top;
+
+}
+
+.label{
+
+width:120px;
+
+font-weight:bold;
+
+color:#1565c0;
+
+}
+
+.info-grid{
+
+display:grid;
+
+grid-template-columns:120px 1fr 120px 1fr;
+
+row-gap:10px;
+
+column-gap:14px;
+
+align-items:center;
+
+}
+
+.value{
+
+padding:4px 0;
+
+border-bottom:1px solid #eee;
+
+min-height:20px;
+
+}
+
+textarea{
+
+width:100%;
+
+height:80px;
+
+resize:none;
+
+border:none;
+
+background:#fafafa;
+
+padding:8px;
+
+font-family:Arial;
+
+font-size:14px;
+
+}
+
+.progress{
+
+width:100%;
+
+height:16px;
+
+background:#eee;
+
+border-radius:8px;
+
+overflow:hidden;
+
+margin-top:8px;
+
+}
+
+.progress-bar{
+
+height:100%;
+
+background:#1a73e8;
+
+width:0%;
+
+transition:.3s;
+
+}
+
+.buttons{
+
+margin-top:20px;
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+gap:14px;
+
+flex-wrap:nowrap;
+
+}
+
+button{
+
+padding:8px 14px;
+
+cursor:pointer;
+
+white-space:nowrap;
+
+font-size:14px;
+
+}
+
+.primary{
+
+background:#1a73e8;
+
+color:white;
+
+border:none;
+
+border-radius:5px;
+
+}
+
+.copyButton{
+
+background:#e8f0fe;
+
+border:1px solid #1a73e8;
+
+color:#1a73e8;
+
+font-weight:bold;
+
+border-radius:5px;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>
+
+🌐 Đăng ký phúc khảo trên web TSĐC
+
+</h2>
+
+<div class="box">
+
+<div class="title">
+
+Tiến độ thực hiện
+
+</div>
+
+<div id="progressText">
+
+Đang tải...
+
+</div>
+
+<div class="progress">
+
+<div
+
+id="progressBar"
+
+class="progress-bar">
+
+</div>
+
+</div>
+
+</div>
+
+<div class="box">
+
+<div class="title">
+
+Thông tin thí sinh
+
+</div>
+
+<div class="info-grid">
+
+<div class="label">
+Số thứ tự
+</div>
+
+<div
+class="value"
+id="stt">
+</div>
+
+<div class="label">
+SBD
+</div>
+
+<div
+class="value"
+id="sbd">
+</div>
+
+<div class="label">
+Họ tên
+</div>
+
+<div
+class="value"
+id="hoTen">
+</div>
+
+<div class="label">
+Mã đơn
+</div>
+
+<div
+class="value"
+id="maDon">
+</div>
+
+<div class="label">
+Môn
+</div>
+
+<div
+class="value"
+id="mon"
+style="grid-column:span 3;">
+</div>
+
+</div>
+
+</div>
+
+<div class="box">
+
+<div class="title">
+
+Lý do phúc khảo
+
+</div>
+
+<textarea
+
+id="lyDo"
+
+readonly>
+
+</textarea>
+
+</div>
+
+<div class="buttons">
+
+<button onclick="openPdf()">
+📄 Mở file scan
+</button>
+
+<button
+class="copyButton"
+onclick="copySBD()">
+🎲 Copy SBD
+</button>
+
+<button
+class="copyButton"
+onclick="copyReason()">
+📋 Copy lý do
+</button>
+
+<button onclick="previousStudent()">
+◀ Quay lại
+</button>
+
+<button
+id="finishButton"
+class="primary"
+onclick="finishStudent()">
+✅ Đã đăng ký
+</button>
+
+<button onclick="nextStudent()">
+⏭ Bỏ qua
+</button>
+
+</div>
+<div id="finishBox"
+style="
+display:none;
+text-align:center;
+padding:40px;">
+
+<div style="
+font-size:64px;
+margin-bottom:18px;">
+✅
+</div>
+
+<div style="
+font-size:24px;
+font-weight:bold;
+color:#2e7d32;">
+Hoàn thành đăng ký
+</div>
+
+<div id="finishMessage"
+style="
+margin-top:18px;
+font-size:16px;
+line-height:1.8;">
+</div>
+
+<br>
+
+<button
+class="primary"
+onclick="google.script.host.close()">
+Đóng
+</button>
+
+</div>
+<script>
+
+let currentIndex=0;
+let processedCount = 0;
+
+let currentData=null;
+
+</script>
+
+<script>
+window.onload=function(){
+
+  google.script.run
+    .withSuccessHandler(loadData)
+    .getPendingWebRegistration();
+
+};
+let students=[];
+let totalStudents = 0;
+
+function loadData(data){
+
+  students = data;
+
+  totalStudents = data.length;
+
+  currentIndex = 0;
+
+  processedCount = 0;
+
+  showStudent();
+
+}
+
+function showStudent(){
+
+  if(students.length==0){
+
+  document.body.innerHTML =
+    document.getElementById("finishBox").outerHTML;
+
+  document.getElementById("finishBox").style.display="block";
+
+  document.getElementById("finishMessage").innerHTML =
+    "Đã xử lý thành công <b>"
+    + processedCount
+    + " / "
+    + totalStudents
+    + "</b> thí sinh.<br><br>"
+    + "Không còn hồ sơ nào cần đăng ký.";
+
+  return;
+
+}
+
+  if(currentIndex<0)
+    currentIndex=0;
+
+  if(currentIndex>=students.length)
+    currentIndex=students.length-1;
+
+  currentData=
+    students[currentIndex];
+
+  document.getElementById("stt").innerText =
+  (processedCount + 1) +
+  " / " +
+  totalStudents;
+
+  document.getElementById("hoTen").innerText=
+    currentData.hoTen;
+
+  document.getElementById("sbd").innerText=
+    currentData.sbd;
+
+  document.getElementById("maDon").innerText=
+    currentData.maDon;
+
+  document.getElementById("mon").innerText=
+    currentData.mon;
+
+  document.getElementById("lyDo").value=
+    currentData.lyDo;
+    document.getElementById("maDon").innerText += " (Trang " + currentData.soTrangPdf + ")";
+
+  document.getElementById("progressText").innerText =
+  "Đã xử lý "
+  + processedCount
+  + " / "
+  + totalStudents;
+
+  document.getElementById("progressBar").style.width =
+(
+processedCount
+/
+totalStudents
+*100
+) + "%";
+if(students.length==1){
+
+  document.getElementById("finishButton").innerText =
+  "✅ Hoàn thành";
+
+}else{
+
+  document.getElementById("finishButton").innerText =
+  "✅ Đã đăng ký";
+
+}
+document.getElementById("finishButton").disabled=false;
+}
+function previousStudent(){
+
+  if(currentIndex>0){
+
+    currentIndex--;
+
+    showStudent();
+
+  }
+
+}
+function nextStudent(){
+
+  if(currentIndex<students.length-1){
+
+    currentIndex++;
+
+    showStudent();
+
+  }
+
+}
+function finishStudent(){
+
+  const btn =
+    document.getElementById("finishButton");
+
+  btn.disabled = true;
+
+  google.script.run
+
+    .withSuccessHandler(function(){
+
+      processedCount++;
+
+students.splice(currentIndex,1);
+
+btn.disabled = false;
+
+showStudent();
+
+    })
+
+    .finishWebRegistration(
+      currentData.row
+    );
+
+}
+function copySBD(){
+
+  navigator.clipboard.writeText(
+    currentData.sbd
+  );
+
+}
+function copyReason(){
+
+  navigator.clipboard.writeText(
+    currentData.lyDo
+  );
+
+}
+function openPdf(){
+
+  window.open(
+    currentData.scanPdf,
+    "_blank"
+  );
+
+}
+</script>
+</body>
+
+</html>

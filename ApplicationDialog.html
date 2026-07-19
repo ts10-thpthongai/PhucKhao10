@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <base target="_top">
+
+  <style>
+
+    body{
+
+      font-family:Arial,sans-serif;
+
+      padding:18px;
+
+      font-size:14px;
+
+      color:#333;
+
+      line-height:1.6;
+
+    }
+
+    h2{
+
+      margin-top:0;
+
+      color:#1565c0;
+
+    }
+
+    .box{
+
+  border:1px solid #dcdcdc;
+
+  border-radius:8px;
+
+  padding:12px 16px;
+
+  margin-top:12px;
+
+  background:white;
+
+}
+
+.section-title{
+
+  font-size:17px;
+
+  font-weight:bold;
+
+  color:#1565c0;
+
+  margin-bottom:10px;
+
+}
+
+.info-table{
+
+  width:100%;
+
+  border-collapse:collapse;
+
+}
+
+.info-table td{
+
+  padding:7px 6px;
+
+  border-bottom:1px solid #f0f0f0;
+
+}
+
+.info-table tr:last-child td{
+
+  border-bottom:none;
+
+}
+
+.info-label{
+
+  width:90px;
+
+  font-weight:bold;
+
+  color:#1565c0;
+
+}
+
+.history{
+
+  font-family:Consolas, monospace;
+
+  font-size:14px;
+
+  line-height:1.5;
+
+  background:#fafafa;
+
+  border:1px solid #e6e6e6;
+
+  border-radius:6px;
+
+  padding:12px 14px;
+
+  white-space:pre-line;
+
+  overflow:auto;
+
+  max-height:170px;
+
+}
+
+.analysis{
+
+  display:flex;
+
+  gap:14px;
+
+  align-items:flex-start;
+
+  margin:12px 0;
+
+  padding:12px 16px;
+
+  border-radius:8px;
+
+  border-left:6px solid #999;
+
+}
+
+.analysis-icon{
+
+  font-size:24px;
+
+  line-height:1;
+
+  margin-top:2px;
+
+}
+
+.analysis-body{
+
+  flex:1;
+
+}
+
+.analysis-title{
+
+  font-size:18px;
+
+  font-weight:700;
+
+  margin:0;
+
+}
+
+.analysis-message{
+
+  margin-top:6px;
+
+  white-space:pre-line;
+
+  line-height:1.45;
+
+}
+
+    button{
+
+      padding:10px 18px;
+
+      margin-left:8px;
+
+      cursor:pointer;
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<h2>
+
+📄 Tiếp nhận đơn phúc khảo
+
+</h2>
+
+<div class="analysis <?= data.analysisColor ?>">
+
+  <div class="analysis-icon">
+
+    <?!= data.analysisIcon ?>
+
+  </div>
+
+  <div class="analysis-body">
+
+    <div class="analysis-title">
+
+      <?= data.analysisTitle ?>
+
+    </div>
+
+    <div class="analysis-message">
+
+<?!= data.analysisMessage.replace(/\n/g,"<br>") ?>
+
+</div>
+
+  </div>
+
+</div>
+
+<div class="box">
+
+  <div class="section-title">
+
+    Thông tin đơn phúc khảo
+
+  </div>
+
+  <table class="info-table">
+
+    <tr>
+
+      <td class="info-label">Họ tên</td>
+
+      <td><?= data.hoTen ?></td>
+
+      <td class="info-label">SBD</td>
+
+      <td><?= data.sbd ?></td>
+
+    </tr>
+
+    <tr>
+
+      <td class="info-label">Mã đơn</td>
+
+      <td><?= data.maDon ?></td>
+
+      <td class="info-label">Môn</td>
+
+      <td><?= data.mon ?></td>
+
+    </tr>
+
+    <tr>
+
+      <td class="info-label">Lý do</td>
+
+      <td colspan="3">
+
+        <?= data.lyDo ?>
+
+      </td>
+
+    </tr>
+
+  </table>
+
+</div>
+
+<div class="box">
+
+  <div class="section-title">
+
+    Lịch sử các lần nộp
+
+  </div>
+
+  <pre class="history"><?= data.history ?></pre>
+
+</div>
+
+<div style="text-align:right;margin-top:20px">
+
+<? if (data.canAccept) { ?>
+
+<button
+onclick="acceptApplication()"
+style="
+background:#1a73e8;
+color:white;
+border:none;
+padding:10px 18px;
+border-radius:6px;
+cursor:pointer;
+margin-right:8px;
+">
+
+✅ Tiếp nhận đơn
+
+</button>
+
+<? } ?>
+
+<button
+onclick="google.script.host.close()"
+>
+
+Đóng
+
+</button>
+
+</div>
+<script>
+
+function acceptApplication(){
+
+  google.script.run
+
+    .withSuccessHandler(function(result){
+
+  google.script.host.close();
+
+  google.script.run.showAcceptSuccess();
+
+})
+
+    .withFailureHandler(function(err){
+
+      alert(err.message);
+
+    })
+
+    .acceptApplication(<?= data.row ?>);
+
+}
+
+</script>
+</body>
+
+</html>
