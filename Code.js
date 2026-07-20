@@ -3377,6 +3377,16 @@ function rebuildAcceptedList() {
   //--------------------------------------------------
 
   const result = [];
+  const data3AdminColumns = [
+    "Đăng ký phúc khảo trên web TSĐC",
+    "Thông báo kết quả phúc khảo",
+    "Thời gian gửi kết quả",
+    "Xác nhận nguyện vọng phúc khảo",
+    "Ghi chú",
+    "Thời gian xác nhận",
+    "Mã xác nhận",
+    "Số trang PDF trong file scan đơn giấy"
+  ];
 
   Object.keys(sourceMapByMaDon).forEach(function(maDon){
 
@@ -3394,17 +3404,18 @@ function rebuildAcceptedList() {
 
       const newRow = sourceRow.slice();
 
-      // Giữ nguyên cột "Đăng ký phúc khảo trên web TSĐC"
-      if(targetMap["Đăng ký phúc khảo trên web TSĐC"]){
-
-        newRow[
-          sourceMap["Đăng ký phúc khảo trên web TSĐC"]-1
-        ] =
-        old[
-          targetMap["Đăng ký phúc khảo trên web TSĐC"]-1
-        ];
-
+      while(newRow.length < target.getLastColumn()){
+        newRow.push("");
       }
+
+      data3AdminColumns.forEach(function(columnName){
+
+        if(targetMap[columnName]){
+          newRow[targetMap[columnName]-1] =
+            old[targetMap[columnName]-1];
+        }
+
+      });
 
       result.push(newRow);
 
@@ -3412,11 +3423,23 @@ function rebuildAcceptedList() {
 
       const newRow = sourceRow.slice();
 
-      if(sourceMap["Đăng ký phúc khảo trên web TSĐC"]){
+      while(newRow.length < target.getLastColumn()){
+        newRow.push("");
+      }
+
+      if(targetMap["Đăng ký phúc khảo trên web TSĐC"]){
 
         newRow[
-          sourceMap["Đăng ký phúc khảo trên web TSĐC"]-1
+          targetMap["Đăng ký phúc khảo trên web TSĐC"]-1
         ]="Chưa ĐK";
+
+      }
+
+      if(targetMap["Xác nhận nguyện vọng phúc khảo"]){
+
+        newRow[
+          targetMap["Xác nhận nguyện vọng phúc khảo"]-1
+        ]="Chưa gửi";
 
       }
 
