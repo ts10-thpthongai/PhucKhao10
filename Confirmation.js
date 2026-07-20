@@ -108,11 +108,65 @@ function sendConfirmationEmail() {
 
   assignConfirmationTokens_();
   const sheet = getConfirmationSheet_();
-const map = getConfirmationColumnMap_();
-const lastRow = sheet.getLastRow();
+  const map = getConfirmationColumnMap_();
+  const lastRow = sheet.getLastRow();
+  const statusCol = map["Xác nhận nguyện vọng phúc khảo"];
+  let sentCount = 0;
+  let skippedCount = 0;
+  let errorCount = 0;
+
+  for (let row = 2; row <= lastRow; row++) {
+    const status = String(
+      sheet.getRange(row, statusCol).getValue()
+    ).trim();
+
+    if (status !== CONFIRM_STATUS.NOT_SENT) {
+      skippedCount++;
+      continue;
+    }
+
+    try {
+      const emailData = buildConfirmationEmail_(row);
+      const template = HtmlService.createTemplateFromFile(
+        "ConfirmationEmail"
+      );
+
+      template.fullName = emailData.fullName;
+      template.sbd = emailData.sbd;
+      template.maDon = emailData.maDon;
+      template.mon = emailData.mon;
+      template.confirmUrl = emailData.confirmUrl;
+
+      MailApp.sendEmail({
+        to: emailData.email,
+        subject:
+          "[THPT Hòn Gai] Xác nhận nguyện vọng phúc khảo - " +
+          emailData.sbd,
+        body:
+          "Vui lòng xem nội dung email ở định dạng HTML.",
+        htmlBody: template.evaluate().getContent()
+      });
+
+      sheet.getRange(row, statusCol).setValue(
+        CONFIRM_STATUS.SENT
+      );
+      sentCount++;
+    } catch (error) {
+      Logger.log(
+        "Không thể gửi email xác nhận ở dòng " +
+        row +
+        ": " +
+        error
+      );
+      errorCount++;
+    }
+  }
 
   SpreadsheetApp.getUi().alert(
-    "Đã sinh mã xác nhận cho tất cả hồ sơ.\n\nBước gửi email sẽ được triển khai ở bước tiếp theo."
+    "Kết quả gửi email xác nhận:\n\n" +
+    "Gửi thành công: " + sentCount + "\n" +
+    "Bỏ qua: " + skippedCount + "\n" +
+    "Lỗi: " + errorCount
   );
 
 }
