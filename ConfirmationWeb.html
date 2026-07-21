@@ -1,18 +1,64 @@
-<!-- CSS -->
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #333;
+      max-width: 680px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
 
-<!-- Header -->
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 28px;
+    }
 
-<!-- Thông tin hồ sơ -->
+    .success { border-left: 6px solid #34a853; }
+    .info { border-left: 6px solid #1a73e8; }
+    .warning { border-left: 6px solid #f9ab00; }
+    .error { border-left: 6px solid #d93025; }
 
-<!-- Trang đơn -->
+    h1 {
+      margin-top: 0;
+      font-size: 23px;
+    }
 
-<!-- Hai nút
-     Xác nhận đúng
-     Tôi cần đính chính
--->
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
 
-<!-- Khu vực nhập đính chính -->
+    td {
+      padding: 9px 0;
+      border-top: 1px solid #eee;
+    }
 
-<!-- Thông báo -->
+    td:first-child {
+      width: 160px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <main class="card <?= page.status ?>">
+    <h1><?= page.title ?></h1>
+    <p><?= page.message ?></p>
 
-<!-- Javascript -->
+    <? if (page.application) { ?>
+      <table>
+        <tr><td>Họ tên</td><td><?= page.application.fullName ?></td></tr>
+        <tr><td>Số báo danh</td><td><?= page.application.sbd ?></td></tr>
+        <tr><td>Mã đơn</td><td><?= page.application.maDon ?></td></tr>
+        <tr><td>Môn phúc khảo</td><td><?= page.application.mon ?></td></tr>
+      </table>
+    <? } ?>
+  </main>
+</body>
+</html>

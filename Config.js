@@ -25,6 +25,10 @@ FORM_ID: "1GOQ_t2t316Z2JuF3G5Y9nFr_w60eIeXbdaOYRcYaAOw",
   SCAN_FOLDER_ID: "1yumyUlFtcsALzHb690psyP9WHW1lf7DJ",
 
       // ID file scan
-  SCAN_PDF_FILE_ID: "1D-xaKEOzz6KOtCImKY1V6vUFqWWZoZQk"
+  SCAN_PDF_FILE_ID: "1D-xaKEOzz6KOtCImKY1V6vUFqWWZoZQk",
+
+  // URL Web App xác nhận nguyện vọng phúc khảo
+  CONFIRM_WEB_APP_URL:
+    "https://script.google.com/macros/s/AKfycbxo4sGEAw6JnG3zn4ZjaQnUdlFmdYaoN7urLKokxOvfjz2CkAgRvsp0Zl4qRknavKO_/exec"
 
 };
