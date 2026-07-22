@@ -451,6 +451,7 @@ function renderConfirmationPage_(row, title, message, status) {
     status: status,
     application: null
   };
+  template.confirmTime = "";
 
   if (row) {
     const sheet = getConfirmationSheet_();
@@ -465,6 +466,19 @@ function renderConfirmationPage_(row, title, message, status) {
       maDon: data[map["Mã đơn"] - 1],
       mon: data[map["Môn xin phúc khảo"] - 1]
     };
+
+    const confirmedAtCol = map["Thời gian xác nhận"];
+    const confirmedAt = confirmedAtCol
+      ? data[confirmedAtCol - 1]
+      : "";
+
+    if (confirmedAt) {
+      template.confirmTime = Utilities.formatDate(
+        new Date(confirmedAt),
+        Session.getScriptTimeZone(),
+        "dd/MM/yyyy HH:mm:ss"
+      );
+    }
   }
 
   return template

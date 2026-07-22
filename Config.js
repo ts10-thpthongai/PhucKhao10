@@ -29,6 +29,6 @@ FORM_ID: "1GOQ_t2t316Z2JuF3G5Y9nFr_w60eIeXbdaOYRcYaAOw",
 
   // URL Web App xác nhận nguyện vọng phúc khảo
   CONFIRM_WEB_APP_URL:
-    "https://script.google.com/macros/s/AKfycbxo4sGEAw6JnG3zn4ZjaQnUdlFmdYaoN7urLKokxOvfjz2CkAgRvsp0Zl4qRknavKO_/exec"
+    "https://script.google.com/macros/s/AKfycbxcQYH4SKvmv0swkPku4HW6tcI1wc6IH6dOkKA2E3KC66x85utGTmXXYXfC6aIgYQ-Q/exec"
 
 };

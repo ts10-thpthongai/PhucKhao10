@@ -57,6 +57,9 @@
         <tr><td>Số báo danh</td><td><?= page.application.sbd ?></td></tr>
         <tr><td>Mã đơn</td><td><?= page.application.maDon ?></td></tr>
         <tr><td>Môn phúc khảo</td><td><?= page.application.mon ?></td></tr>
+        <? if (confirmTime) { ?>
+          <tr><td>Thời gian xác nhận</td><td><?= confirmTime ?></td></tr>
+        <? } ?>
       </table>
     <? } ?>
   </main>
