@@ -3556,6 +3556,14 @@ function rebuildAcceptedList() {
 
       }
 
+      if(targetMap["Thông báo kết quả phúc khảo"]){
+
+        newRow[
+          targetMap["Thông báo kết quả phúc khảo"]-1
+        ]="Chưa gửi";
+
+      }
+
       if(targetMap["Xác nhận nguyện vọng phúc khảo"]){
 
         newRow[
@@ -4699,24 +4707,6 @@ ui.alert(
   ui.ButtonSet.OK
 
 );
-
-const item = sendList[0];
-
-sendOneResultEmail_(
-
-  item.rowNumber,
-
-  item.rowData,
-
-  headerMap,
-
-  pdfFile,
-
-  sheet
-
-);
-
-ui.alert("Đã gửi thử thành công.");
 
 }
 function sendOneResultEmail_(
