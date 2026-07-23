@@ -71,6 +71,12 @@
 
     .correction-content {
       white-space: pre-wrap;
+      margin: 12px 0;
+      padding: 12px;
+      border: 1px solid #f4c7c3;
+      border-radius: 6px;
+      background: #fce8e6;
+      color: #a50e0e;
     }
 
     .scan-info {
@@ -88,6 +94,11 @@
       color: #fff;
       font-weight: bold;
       text-decoration: none;
+    }
+
+    .scan-note {
+      margin-top: 10px;
+      color: #5f6368;
     }
   </style>
 </head>
@@ -123,6 +134,9 @@
               rel="noopener noreferrer">
               XEM FILE SCAN ĐƠN GIẤY
             </a>
+            <? if (page.showCorrectionForm) { ?>
+              <p class="scan-note">Lưu ý: Khi xem file scan, vui lòng không đóng hoặc tải lại trang Đính chính. File scan sẽ được mở ở tab mới, sau khi đối chiếu xong hãy quay lại tab này để tiếp tục nhập nội dung đính chính.</p>
+            <? } ?>
           <? } else if (page.scan.scanFileStatus === "multiple") { ?>
             <p>Nhà trường chưa xác định được file scan đơn giấy chính thức.</p>
           <? } else { ?>

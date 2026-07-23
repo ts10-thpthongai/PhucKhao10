@@ -400,7 +400,8 @@ function showCorrectionPage_(row) {
     {
       correction: correction,
       receiptTime: CONFIG.CORRECTION_RECEIPT_TIME,
-      receiptLocation: CONFIG.CORRECTION_RECEIPT_LOCATION
+      receiptLocation: CONFIG.CORRECTION_RECEIPT_LOCATION,
+      showScanInfo: true
     }
   );
 }
@@ -431,7 +432,8 @@ function showCorrectionFormPage_(row, token) {
     "info",
     {
       showCorrectionForm: true,
-      correctionToken: token
+      correctionToken: token,
+      showScanInfo: true
     }
   );
 }
