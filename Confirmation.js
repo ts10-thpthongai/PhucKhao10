@@ -348,7 +348,8 @@ function showConfirmPage_(row) {
     row,
     "Xác nhận thành công",
     "Nguyện vọng phúc khảo của bạn đã được xác nhận.",
-    "success"
+    "success",
+    { showScanInfo: true }
   );
 }
 
@@ -368,7 +369,8 @@ function showConfirmedPage_(row) {
     row,
     "Bạn đã xác nhận trước đó",
     "Nguyện vọng phúc khảo của bạn đã được xác nhận.",
-    "info"
+    "info",
+    { showScanInfo: true }
   );
 }
 
@@ -554,7 +556,8 @@ function renderConfirmationPage_(row, title, message, status, options) {
     showCorrectionForm: Boolean(pageOptions.showCorrectionForm),
     correction: pageOptions.correction || null,
     receiptTime: pageOptions.receiptTime || "",
-    receiptLocation: pageOptions.receiptLocation || ""
+    receiptLocation: pageOptions.receiptLocation || "",
+    scan: null
   };
   template.confirmTime = "";
   template.correctionTokenJson = "null";
@@ -590,11 +593,88 @@ function renderConfirmationPage_(row, title, message, status, options) {
     if (confirmedAt) {
       template.confirmTime = formatConfirmationTime_(confirmedAt);
     }
+
+    if (pageOptions.showScanInfo) {
+      template.page.scan = getScanPageInfo_(data, map);
+    }
   }
 
   return template
     .evaluate()
     .setTitle("Xác nhận nguyện vọng phúc khảo");
+}
+
+function getScanPageInfo_(data, map) {
+
+  const pageCol = map["Số trang PDF trong file scan đơn giấy"];
+  const pageValue = pageCol ? data[pageCol - 1] : "";
+  const pageNumber = Number(pageValue);
+  const hasPdfPageNumber = String(pageValue).trim() !== "" &&
+    Number.isInteger(pageNumber) &&
+    pageNumber > 0;
+
+  if (!hasPdfPageNumber) {
+    return {
+      hasPdfPageNumber: false,
+      pageNumber: "",
+      scanFileStatus: "missing",
+      scanFileUrl: "",
+      showScanFileButton: false
+    };
+  }
+
+  const scanFile = findOfficialScanPdf_();
+
+  return {
+    hasPdfPageNumber: true,
+    pageNumber: pageNumber,
+    scanFileStatus: scanFile.status,
+    scanFileUrl: scanFile.url,
+    showScanFileButton:
+      scanFile.status === "available" &&
+      scanFile.url !== ""
+  };
+}
+
+function findOfficialScanPdf_() {
+
+  const folderId = String(CONFIG.SCAN_FOLDER_ID || "").trim();
+
+  if (folderId === "") {
+    return { status: "missing", url: "" };
+  }
+
+  try {
+    const files = DriveApp.getFolderById(folderId).getFiles();
+    const pdfFiles = [];
+
+    while (files.hasNext()) {
+      const file = files.next();
+
+      if (file.getMimeType() === MimeType.PDF) {
+        pdfFiles.push(file);
+      }
+    }
+
+    if (pdfFiles.length === 0) {
+      return { status: "missing", url: "" };
+    }
+
+    if (pdfFiles.length > 1) {
+      return { status: "multiple", url: "" };
+    }
+
+    return {
+      status: "available",
+      url:
+        "https://drive.google.com/file/d/" +
+        pdfFiles[0].getId() +
+        "/view"
+    };
+  } catch (error) {
+    Logger.log("Không thể truy cập thư mục file scan: " + error);
+    return { status: "missing", url: "" };
+  }
 }
 
 /*****************************************************

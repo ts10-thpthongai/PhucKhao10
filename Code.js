@@ -2496,6 +2496,11 @@ function onOpen() {
       .createMenu("⚙️ Công cụ")
 
       .addItem(
+        "📄 Đánh số trang file scan đơn giấy",
+        "numberScanPdfPages"
+      )
+
+      .addItem(
         "⚠️ Dọn dữ liệu thử",
         "cleanTestData"
       )
@@ -2505,6 +2510,117 @@ function onOpen() {
   .addToUi();
 
 }
+
+/*****************************************************
+ * Đánh số trang file scan đơn giấy trong Data3
+ *****************************************************/
+function numberScanPdfPages() {
+
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName("Data3");
+
+  if (!sheet) {
+    ui.alert("Không tìm thấy sheet Data3.");
+    return;
+  }
+
+  const map = getColumnMap_(sheet);
+  const applicationCol = map["Mã đơn"];
+  const pageCol = map["Số trang PDF trong file scan đơn giấy"];
+
+  if (!applicationCol) {
+    ui.alert('Thiếu cột "Mã đơn" trong Data3.');
+    return;
+  }
+
+  if (!pageCol) {
+    ui.alert(
+      'Thiếu cột "Số trang PDF trong file scan đơn giấy" trong Data3.'
+    );
+    return;
+  }
+
+  const dataStartRow = 2;
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < dataStartRow) {
+    ui.alert("Không có hồ sơ để đánh số trang.");
+    return;
+  }
+
+  const applicationIds = sheet
+    .getRange(
+      dataStartRow,
+      applicationCol,
+      lastRow - dataStartRow + 1,
+      1
+    )
+    .getValues();
+  const pageValues = [];
+  let pageNumber = 0;
+  let hasApplication = false;
+  let foundBlankAfterApplication = false;
+
+  for (let index = 0; index < applicationIds.length; index++) {
+    const hasCurrentApplication = String(
+      applicationIds[index][0]
+    ).trim() !== "";
+
+    if (hasCurrentApplication) {
+      if (foundBlankAfterApplication) {
+        ui.alert(
+          "Data3 có dòng trống xen giữa các hồ sơ. " +
+          "Vui lòng kiểm tra lại trước khi đánh số trang."
+        );
+        return;
+      }
+
+      hasApplication = true;
+      pageNumber++;
+      pageValues.push([pageNumber]);
+      continue;
+    }
+
+    if (hasApplication) {
+      foundBlankAfterApplication = true;
+    }
+
+    pageValues.push([""]);
+  }
+
+  if (pageNumber === 0) {
+    ui.alert("Không có hồ sơ để đánh số trang.");
+    return;
+  }
+
+  const confirmation = ui.alert(
+    "Xác nhận đánh số trang",
+    "Có " + pageNumber + " hồ sơ sẽ được đánh số trang.\n\n" +
+    'Dữ liệu hiện có trong cột "Số trang PDF trong file scan đơn giấy" ' +
+    "sẽ được ghi đè toàn bộ.\n\n" +
+    "Việc đánh số theo đúng thứ tự hiện tại của Data3. " +
+    "Hệ thống không sắp xếp lại Data3 và không thay đổi các cột khác.",
+    ui.ButtonSet.YES_NO
+  );
+
+  if (confirmation !== ui.Button.YES) {
+    return;
+  }
+
+  sheet
+    .getRange(dataStartRow, pageCol, pageValues.length, 1)
+    .setValues(pageValues);
+
+  ui.alert(
+    "Hoàn thành",
+    "Đã đánh số " + pageNumber +
+    " hồ sơ, bắt đầu từ trang 1 tại hồ sơ đầu tiên.",
+    ui.ButtonSet.OK
+  );
+}
+
 /*****************************************************
  * Dọn dữ liệu chạy thử
  * Bước 1:

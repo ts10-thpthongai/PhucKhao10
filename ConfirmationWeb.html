@@ -72,6 +72,23 @@
     .correction-content {
       white-space: pre-wrap;
     }
+
+    .scan-info {
+      margin-top: 20px;
+      padding-top: 12px;
+      border-top: 1px solid #eee;
+    }
+
+    .scan-button {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 11px 20px;
+      border-radius: 6px;
+      background: #1a73e8;
+      color: #fff;
+      font-weight: bold;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
@@ -89,6 +106,30 @@
           <tr><td>Thời gian phản hồi</td><td><?= confirmTime ?></td></tr>
         <? } ?>
       </table>
+    <? } ?>
+
+    <? if (page.scan) { ?>
+      <section class="scan-info">
+        <? if (!page.scan.hasPdfPageNumber) { ?>
+          <p>Nhà trường chưa cập nhật số trang file scan đơn giấy.</p>
+        <? } else { ?>
+          <p>Đơn của bạn nằm ở trang số: <strong><?= page.scan.pageNumber ?></strong></p>
+
+          <? if (page.scan.showScanFileButton) { ?>
+            <a
+              class="scan-button"
+              href="<?= page.scan.scanFileUrl ?>"
+              target="_blank"
+              rel="noopener noreferrer">
+              XEM FILE SCAN ĐƠN GIẤY
+            </a>
+          <? } else if (page.scan.scanFileStatus === "multiple") { ?>
+            <p>Nhà trường chưa xác định được file scan đơn giấy chính thức.</p>
+          <? } else { ?>
+            <p>Nhà trường chưa cập nhật file scan đơn giấy.</p>
+          <? } ?>
+        <? } ?>
+      </section>
     <? } ?>
 
     <? if (page.showCorrectionForm) { ?>
