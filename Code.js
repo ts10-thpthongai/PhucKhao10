@@ -3383,7 +3383,7 @@ function rebuildAcceptedList() {
     "Thời gian gửi kết quả",
     "Xác nhận nguyện vọng phúc khảo",
     "Ghi chú",
-    "Thời gian xác nhận",
+    "Thời gian phản hồi",
     "Mã xác nhận",
     "Số trang PDF trong file scan đơn giấy"
   ];

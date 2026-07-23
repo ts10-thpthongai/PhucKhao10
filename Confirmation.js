@@ -87,7 +87,14 @@ if (webAppUrl === "") {
 const confirmUrl =
   webAppUrl +
   "?token=" +
-  encodeURIComponent(token);
+  encodeURIComponent(token) +
+  "&action=confirm";
+
+const correctionUrl =
+  webAppUrl +
+  "?token=" +
+  encodeURIComponent(token) +
+  "&action=correction";
 
 return {
   fullName: data[map["Họ tên"] - 1],
@@ -107,7 +114,8 @@ return {
     data[
       map["Môn xin phúc khảo"] - 1
     ],
-  confirmUrl: confirmUrl
+  confirmUrl: confirmUrl,
+  correctionUrl: correctionUrl
 };
 }
 
@@ -143,6 +151,7 @@ function sendConfirmationEmail() {
       template.maDon = emailData.maDon;
       template.mon = emailData.mon;
       template.confirmUrl = emailData.confirmUrl;
+      template.correctionUrl = emailData.correctionUrl;
 
       MailApp.sendEmail({
         to: emailData.email,
@@ -262,15 +271,18 @@ function doGet(e) {
   const token = e && e.parameter
     ? String(e.parameter.token || "").trim()
     : "";
+  const action = e && e.parameter
+    ? String(e.parameter.action || "confirm").trim()
+    : "confirm";
 
   if (token === "") {
     return showInvalidTokenPage_();
   }
 
-  return openConfirmation(token);
+  return openConfirmation(token, action);
 }
 
-function openConfirmation(token) {
+function openConfirmation(token, action) {
 
   const row = findConfirmationRowByToken_(token);
 
@@ -288,11 +300,29 @@ function openConfirmation(token) {
   ).trim();
 
   if (status === CONFIRM_STATUS.OK) {
+    if (action === "correction") {
+      return showConfirmedCorrectionUnavailablePage_(row);
+    }
+
     return showConfirmedPage_(row);
   }
 
   if (status === CONFIRM_STATUS.CORRECTION) {
-    return showCorrectionPage_(row);
+    if (action === "correction") {
+      return showCorrectionPage_(row);
+    }
+
+    return showCorrectionInProgressPage_(row);
+  }
+
+  if (status === CONFIRM_STATUS.SENT && getStoredCorrection_(row)) {
+    return action === "correction"
+      ? showCorrectionPage_(row)
+      : showCorrectionInProgressPage_(row);
+  }
+
+  if (status === CONFIRM_STATUS.SENT && action === "correction") {
+    return showCorrectionFormPage_(row, token);
   }
 
   if (status === CONFIRM_STATUS.SENT) {
@@ -342,13 +372,65 @@ function showConfirmedPage_(row) {
   );
 }
 
-function showCorrectionPage_(row) {
+function showConfirmedCorrectionUnavailablePage_(row) {
 
   return renderConfirmationPage_(
     row,
-    "Yêu cầu đính chính đang được xử lý",
-    "Nhà trường đang xử lý yêu cầu đính chính của bạn.",
-    "warning"
+    "Hồ sơ đã được xác nhận",
+    "Hồ sơ đã xác nhận nên không thể đính chính trực tuyến.",
+    "info"
+  );
+}
+
+function showCorrectionPage_(row) {
+
+  const correction = getStoredCorrection_(row);
+
+  return renderConfirmationPage_(
+    row,
+    correction
+      ? "Đã tiếp nhận yêu cầu đính chính"
+      : "Yêu cầu đính chính đang được xử lý",
+    correction
+      ? "Nhà trường đã tiếp nhận yêu cầu của bạn."
+      : "Nhà trường đang xử lý yêu cầu đính chính của bạn.",
+    "warning",
+    {
+      correction: correction,
+      receiptTime: CONFIG.CORRECTION_RECEIPT_TIME,
+      receiptLocation: CONFIG.CORRECTION_RECEIPT_LOCATION
+    }
+  );
+}
+
+function showCorrectionInProgressPage_(row) {
+
+  const correction = getStoredCorrection_(row);
+
+  return renderConfirmationPage_(
+    row,
+    "Hồ sơ đang trong quá trình đính chính",
+    "Yêu cầu đính chính đã được tiếp nhận. Hồ sơ không thể xác nhận trực tuyến trong thời gian này.",
+    "warning",
+    {
+      correction: correction,
+      receiptTime: CONFIG.CORRECTION_RECEIPT_TIME,
+      receiptLocation: CONFIG.CORRECTION_RECEIPT_LOCATION
+    }
+  );
+}
+
+function showCorrectionFormPage_(row, token) {
+
+  return renderConfirmationPage_(
+    row,
+    "Gửi yêu cầu đính chính",
+    "Vui lòng ghi rõ mục cần sửa và nội dung đúng.",
+    "info",
+    {
+      showCorrectionForm: true,
+      correctionToken: token
+    }
   );
 }
 
@@ -378,41 +460,59 @@ function showConfirmationErrorPage_() {
  *****************************************************/
 function confirmApplication_(token) {
 
-  const row = findConfirmationRowByToken_(token);
+  const lock = LockService.getDocumentLock();
 
-  if (!row) {
-    return false;
+  lock.waitLock(30000);
+
+  try {
+    const row = findConfirmationRowByToken_(token);
+
+    if (!row) {
+      return false;
+    }
+
+    const sheet = getConfirmationSheet_();
+    const map = getConfirmationColumnMap_();
+    const statusCol = map["Xác nhận nguyện vọng phúc khảo"];
+    const confirmedAtCol = map["Thời gian phản hồi"];
+    const noteCol = map["Ghi chú"];
+    const status = String(
+      sheet.getRange(row, statusCol).getValue()
+    ).trim();
+
+    if (status !== CONFIRM_STATUS.SENT) {
+      return false;
+    }
+
+    if (
+      noteCol &&
+      isStoredCorrectionNote_(
+        sheet.getRange(row, noteCol)
+      )
+    ) {
+      return false;
+    }
+
+    if (!confirmedAtCol) {
+      throw new Error(
+        'Chưa tìm thấy cột "Thời gian phản hồi" trong Data3.'
+      );
+    }
+
+    sheet.getRange(row, confirmedAtCol).setValue(new Date());
+    sheet.getRange(row, statusCol).setValue(CONFIRM_STATUS.OK);
+
+    const updatedStatus = String(
+      sheet.getRange(row, statusCol).getValue()
+    ).trim();
+    const confirmedAt = sheet
+      .getRange(row, confirmedAtCol)
+      .getValue();
+
+    return updatedStatus === CONFIRM_STATUS.OK && confirmedAt !== "";
+  } finally {
+    lock.releaseLock();
   }
-
-  const sheet = getConfirmationSheet_();
-  const map = getConfirmationColumnMap_();
-  const statusCol = map["Xác nhận nguyện vọng phúc khảo"];
-  const confirmedAtCol = map["Thời gian xác nhận"];
-  const status = String(
-    sheet.getRange(row, statusCol).getValue()
-  ).trim();
-
-  if (status !== CONFIRM_STATUS.SENT) {
-    return false;
-  }
-
-  if (!confirmedAtCol) {
-    throw new Error(
-      'Chưa tìm thấy cột "Thời gian xác nhận" trong Data3.'
-    );
-  }
-
-  sheet.getRange(row, confirmedAtCol).setValue(new Date());
-  sheet.getRange(row, statusCol).setValue(CONFIRM_STATUS.OK);
-
-  const updatedStatus = String(
-    sheet.getRange(row, statusCol).getValue()
-  ).trim();
-  const confirmedAt = sheet
-    .getRange(row, confirmedAtCol)
-    .getValue();
-
-  return updatedStatus === CONFIRM_STATUS.OK && confirmedAt !== "";
 }
 
 function findConfirmationRowByToken_(token) {
@@ -439,19 +539,34 @@ function findConfirmationRowByToken_(token) {
   return null;
 }
 
-function renderConfirmationPage_(row, title, message, status) {
+function renderConfirmationPage_(row, title, message, status, options) {
 
   const template = HtmlService.createTemplateFromFile(
     "ConfirmationWeb"
   );
+  const pageOptions = options || {};
 
   template.page = {
     title: title,
     message: message,
     status: status,
-    application: null
+    application: null,
+    showCorrectionForm: Boolean(pageOptions.showCorrectionForm),
+    correction: pageOptions.correction || null,
+    receiptTime: pageOptions.receiptTime || "",
+    receiptLocation: pageOptions.receiptLocation || ""
   };
   template.confirmTime = "";
+  template.correctionTokenJson = "null";
+
+  if (pageOptions.showCorrectionForm) {
+    template.correctionTokenJson = JSON.stringify(
+      pageOptions.correctionToken || ""
+    )
+      .replace(/</g, "\\u003c")
+      .replace(/>/g, "\\u003e")
+      .replace(/&/g, "\\u0026");
+  }
 
   if (row) {
     const sheet = getConfirmationSheet_();
@@ -467,17 +582,13 @@ function renderConfirmationPage_(row, title, message, status) {
       mon: data[map["Môn xin phúc khảo"] - 1]
     };
 
-    const confirmedAtCol = map["Thời gian xác nhận"];
+    const confirmedAtCol = map["Thời gian phản hồi"];
     const confirmedAt = confirmedAtCol
       ? data[confirmedAtCol - 1]
       : "";
 
     if (confirmedAt) {
-      template.confirmTime = Utilities.formatDate(
-        new Date(confirmedAt),
-        Session.getScriptTimeZone(),
-        "dd/MM/yyyy HH:mm:ss"
-      );
+      template.confirmTime = formatConfirmationTime_(confirmedAt);
     }
   }
 
@@ -490,8 +601,183 @@ function renderConfirmationPage_(row, title, message, status) {
  * PHẦN 6
  * Đính chính
  *****************************************************/
+function submitCorrection(token, note) {
+
+  return submitCorrection_(token, note);
+}
+
 function submitCorrection_(token, note) {
 
+  const normalizedNote = String(note || "").trim();
+
+  if (normalizedNote === "") {
+    throw new Error("Vui lòng nhập nội dung đính chính.");
+  }
+
+  const lock = LockService.getDocumentLock();
+
+  lock.waitLock(30000);
+
+  try {
+    const row = findConfirmationRowByToken_(token);
+
+    if (!row) {
+      throw new Error("Liên kết không hợp lệ hoặc hồ sơ không tồn tại.");
+    }
+
+    const sheet = getConfirmationSheet_();
+    const map = getConfirmationColumnMap_();
+    const statusCol = map["Xác nhận nguyện vọng phúc khảo"];
+    const noteCol = map["Ghi chú"];
+    const confirmedAtCol = map["Thời gian phản hồi"];
+    const status = String(
+      sheet.getRange(row, statusCol).getValue()
+    ).trim();
+
+    if (!noteCol || !confirmedAtCol) {
+      throw new Error(
+        'Thiếu cột "Ghi chú" hoặc "Thời gian phản hồi" trong Data3.'
+      );
+    }
+
+    const noteCell = sheet.getRange(row, noteCol);
+    const currentNote = String(noteCell.getValue() || "");
+
+    if (status !== CONFIRM_STATUS.SENT) {
+      throw new Error(
+        "Hồ sơ đã được xử lý và không thể gửi đính chính lần nữa."
+      );
+    }
+
+    if (isStoredCorrectionNote_(noteCell)) {
+      throw new Error("Yêu cầu đính chính đã được tiếp nhận trước đó.");
+    }
+
+    const submittedAt = new Date();
+    const correctionNote = formatStoredCorrection_(
+      normalizedNote,
+      submittedAt
+    );
+    const noteToSave = currentNote.trim() === ""
+      ? correctionNote
+      : currentNote + "\n\n" + correctionNote;
+
+    noteCell.setValue(noteToSave);
+
+    const existingCellNote = String(noteCell.getNote() || "");
+
+    if (existingCellNote.indexOf(CORRECTION_NOTE_MARKER) === -1) {
+      noteCell.setNote(
+        existingCellNote === ""
+          ? CORRECTION_NOTE_MARKER
+          : existingCellNote + "\n" + CORRECTION_NOTE_MARKER
+      );
+    }
+
+    sheet.getRange(row, confirmedAtCol).setValue(submittedAt);
+    sheet.getRange(row, statusCol).setValue(CONFIRM_STATUS.CORRECTION);
+
+    const updatedStatus = String(
+      sheet.getRange(row, statusCol).getValue()
+    ).trim();
+
+    if (updatedStatus !== CONFIRM_STATUS.CORRECTION) {
+      throw new Error("Không thể cập nhật trạng thái đính chính.");
+    }
+
+    return {
+      content: normalizedNote,
+      submittedAt: formatConfirmationTime_(submittedAt),
+      receiptTime: CONFIG.CORRECTION_RECEIPT_TIME,
+      receiptLocation: CONFIG.CORRECTION_RECEIPT_LOCATION
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+const CORRECTION_NOTE_MARKER = "[YÊU CẦU ĐÍNH CHÍNH PHÚC KHẢO]";
+
+function formatConfirmationTime_(value) {
+
+  return Utilities.formatDate(
+    new Date(value),
+    Session.getScriptTimeZone(),
+    "dd/MM/yyyy HH:mm:ss"
+  );
+}
+
+function formatStoredCorrection_(note, submittedAt) {
+
+  return "Nội dung đính chính:\n" +
+    note +
+    "\n\nThời gian gửi đính chính:\n" +
+    formatConfirmationTime_(submittedAt);
+}
+
+function isStoredCorrectionNote_(noteCell) {
+
+  const value = typeof noteCell.getValue === "function"
+    ? noteCell.getValue()
+    : noteCell;
+  const cellNote = typeof noteCell.getNote === "function"
+    ? noteCell.getNote()
+    : "";
+
+  return String(value || "").indexOf(CORRECTION_NOTE_MARKER) !== -1 ||
+    String(cellNote || "").indexOf(CORRECTION_NOTE_MARKER) !== -1;
+}
+
+function getStoredCorrection_(row) {
+
+  const sheet = getConfirmationSheet_();
+  const map = getConfirmationColumnMap_();
+  const noteCol = map["Ghi chú"];
+
+  if (!noteCol) {
+    return null;
+  }
+
+  const noteCell = sheet.getRange(row, noteCol);
+  const storedNote = String(noteCell.getValue() || "");
+  const cellNote = String(noteCell.getNote() || "");
+  const markerIndex = storedNote.indexOf(CORRECTION_NOTE_MARKER);
+
+  if (
+    markerIndex === -1 &&
+    cellNote.indexOf(CORRECTION_NOTE_MARKER) === -1
+  ) {
+    return null;
+  }
+
+  const contentMarker = "Nội dung đính chính:\n";
+  const storedContent = markerIndex === -1
+    ? storedNote
+    : storedNote.substring(
+      markerIndex + CORRECTION_NOTE_MARKER.length
+    );
+  const contentIndex = storedContent.lastIndexOf(contentMarker);
+  const correctionText = contentIndex === -1
+    ? storedContent.trim()
+    : storedContent.substring(
+      contentIndex + contentMarker.length
+    ).trim();
+  const timeMarker = "\n\nThời gian gửi đính chính:\n";
+  const timeIndex = correctionText.lastIndexOf(timeMarker);
+
+  if (timeIndex === -1) {
+    return {
+      content: correctionText,
+      submittedAt: ""
+    };
+  }
+
+  return {
+    content: correctionText.substring(0, timeIndex).trim(),
+    submittedAt: correctionText.substring(
+      timeIndex + timeMarker.length
+    ).trim()
+  };
 }
 
 /*****************************************************

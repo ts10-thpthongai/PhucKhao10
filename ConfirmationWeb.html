@@ -44,6 +44,34 @@
       width: 160px;
       font-weight: bold;
     }
+
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 150px;
+      padding: 12px;
+      font: inherit;
+    }
+
+    button {
+      margin-top: 14px;
+      padding: 11px 20px;
+      border: 0;
+      border-radius: 6px;
+      background: #f57c00;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #formError {
+      color: #d93025;
+      margin-top: 10px;
+    }
+
+    .correction-content {
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
@@ -58,10 +86,97 @@
         <tr><td>Mã đơn</td><td><?= page.application.maDon ?></td></tr>
         <tr><td>Môn phúc khảo</td><td><?= page.application.mon ?></td></tr>
         <? if (confirmTime) { ?>
-          <tr><td>Thời gian xác nhận</td><td><?= confirmTime ?></td></tr>
+          <tr><td>Thời gian phản hồi</td><td><?= confirmTime ?></td></tr>
         <? } ?>
       </table>
     <? } ?>
+
+    <? if (page.showCorrectionForm) { ?>
+      <div id="correctionForm">
+      <p>Ví dụ: Sửa ngày sinh từ 12/03/2011 thành 21/03/2011.</p>
+      <label for="correctionNote">Nội dung đính chính</label>
+      <textarea id="correctionNote"></textarea>
+      <button type="button" id="submitCorrection">Gửi đính chính</button>
+      <p id="formError" role="alert"></p>
+      </div>
+    <? } ?>
+
+    <? if (page.correction) { ?>
+      <h2>Nội dung đã tiếp nhận</h2>
+      <p class="correction-content"><?= page.correction.content ?></p>
+      <? if (page.correction.submittedAt) { ?>
+        <p><strong>Thời gian gửi:</strong> <?= page.correction.submittedAt ?></p>
+      <? } ?>
+      <p>Vui lòng đến trường để nhận đơn giấy đã được đính chính, kiểm tra lại thông tin, ký và nộp đơn.</p>
+      <p><strong>Thời gian tiếp nhận:</strong> <?= page.receiptTime ?></p>
+      <p><strong>Địa điểm tiếp nhận:</strong> <?= page.receiptLocation ?></p>
+    <? } ?>
   </main>
+
+  <? if (page.showCorrectionForm) { ?>
+    <script>
+      document.getElementById("submitCorrection").addEventListener(
+        "click",
+        function() {
+          const note = document.getElementById("correctionNote").value.trim();
+          const formError = document.getElementById("formError");
+          const token = <?!= correctionTokenJson ?>;
+
+          if (note === "") {
+            formError.textContent = "Vui lòng nhập nội dung đính chính.";
+            return;
+          }
+
+          const submitButton = this;
+
+          submitButton.disabled = true;
+          submitButton.textContent = "Đang gửi...";
+          formError.textContent = "";
+
+          google.script.run
+            .withSuccessHandler(function(receipt) {
+              document.getElementById("correctionForm").remove();
+              showCorrectionReceipt(receipt);
+            })
+            .withFailureHandler(function(error) {
+              submitButton.disabled = false;
+              submitButton.textContent = "Gửi đính chính";
+              formError.textContent = error.message ||
+                "Không thể gửi yêu cầu đính chính.";
+            })
+            .submitCorrection(token, note);
+        }
+      );
+
+      function showCorrectionReceipt(receipt) {
+        const receiptSection = document.createElement("section");
+        const heading = document.createElement("h2");
+        const accepted = document.createElement("p");
+        const content = document.createElement("p");
+        const submittedAt = document.createElement("p");
+        const instruction = document.createElement("p");
+        const receiptTime = document.createElement("p");
+        const receiptLocation = document.createElement("p");
+
+        heading.textContent = "Đã tiếp nhận yêu cầu đính chính";
+        accepted.textContent = "Nhà trường đã tiếp nhận yêu cầu của bạn.";
+        content.className = "correction-content";
+        content.textContent = receipt.content;
+        submittedAt.textContent = "Thời gian gửi: " + receipt.submittedAt;
+        instruction.textContent = "Vui lòng đến trường để nhận đơn giấy đã được đính chính, kiểm tra lại thông tin, ký và nộp đơn.";
+        receiptTime.textContent = "Thời gian tiếp nhận: " + receipt.receiptTime;
+        receiptLocation.textContent = "Địa điểm tiếp nhận: " + receipt.receiptLocation;
+
+        receiptSection.appendChild(heading);
+        receiptSection.appendChild(accepted);
+        receiptSection.appendChild(content);
+        receiptSection.appendChild(submittedAt);
+        receiptSection.appendChild(instruction);
+        receiptSection.appendChild(receiptTime);
+        receiptSection.appendChild(receiptLocation);
+        document.querySelector(".card").appendChild(receiptSection);
+      }
+    </script>
+  <? } ?>
 </body>
 </html>

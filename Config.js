@@ -29,6 +29,10 @@ FORM_ID: "1GOQ_t2t316Z2JuF3G5Y9nFr_w60eIeXbdaOYRcYaAOw",
 
   // URL Web App xác nhận nguyện vọng phúc khảo
   CONFIRM_WEB_APP_URL:
-    "https://script.google.com/macros/s/AKfycbxcQYH4SKvmv0swkPku4HW6tcI1wc6IH6dOkKA2E3KC66x85utGTmXXYXfC6aIgYQ-Q/exec"
+    "https://script.google.com/macros/s/AKfycbxcQYH4SKvmv0swkPku4HW6tcI1wc6IH6dOkKA2E3KC66x85utGTmXXYXfC6aIgYQ-Q/exec",
+
+  // Thời gian và địa điểm tiếp nhận yêu cầu đính chính
+  CORRECTION_RECEIPT_TIME: "14:00, thứ Sáu, ngày 11/07/2026",
+  CORRECTION_RECEIPT_LOCATION: "Phòng Văn thư, trường THPT Hòn Gai"
 
 };
