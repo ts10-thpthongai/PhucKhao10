@@ -2464,6 +2464,11 @@ function onOpen() {
         "sendResultEmail"
       )
 
+      .addItem(
+        "❓ Gửi xác nhận",
+        "sendConfirmationEmail"
+      )
+
   )
 
   .addSubMenu(
