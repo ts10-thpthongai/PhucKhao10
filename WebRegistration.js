@@ -71,6 +71,22 @@ CONFIG.SCAN_FOLDER_ID
 
     }
 
+    const rawPage =
+      row[map["Số trang PDF trong file scan đơn giấy"]-1];
+
+    const pageNumber =
+      Number(String(rawPage).trim());
+
+    const validPageNumber =
+      Number.isInteger(pageNumber) && pageNumber >= 1
+        ? pageNumber
+        : null;
+
+    const scanPdf =
+      "https://drive.google.com/file/d/" +
+      CONFIG.SCAN_PDF_FILE_ID +
+      "/view";
+
     list.push({
 
   row:index+2,
@@ -87,12 +103,9 @@ CONFIG.SCAN_FOLDER_ID
 
   pdf: row[map["Link PDF"]-1],
 
-soTrangPdf: row[map["Số trang PDF trong file scan đơn giấy"]-1],
+soTrangPdf: validPageNumber,
 
-scanPdf:
-"https://drive.google.com/file/d/" +
-CONFIG.SCAN_PDF_FILE_ID +
-"/view"
+scanPdf: scanPdf
 });
 
   });

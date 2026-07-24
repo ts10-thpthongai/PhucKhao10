@@ -177,6 +177,26 @@ font-size:14px;
 
 }
 
+#openPdfButton .scan-button-title{
+
+display:block;
+
+}
+
+#openPdfButton .scan-button-page{
+
+display:block;
+
+margin-top:3px;
+
+font-size:13px;
+
+font-weight:normal;
+
+line-height:1.1;
+
+}
+
 .primary{
 
 background:#1a73e8;
@@ -323,7 +343,9 @@ readonly>
 
 <div class="buttons">
 
-<button onclick="openPdf()">
+<button
+id="openPdfButton"
+onclick="openPdf()">
 📄 Mở file scan
 </button>
 
@@ -468,12 +490,22 @@ function showStudent(){
   document.getElementById("maDon").innerText=
     currentData.maDon;
 
+  const pageNumber = Number(currentData.soTrangPdf);
+
+  const scanButton =
+    document.getElementById("openPdfButton");
+
+  scanButton.innerHTML =
+    Number.isInteger(pageNumber) && pageNumber >= 1
+      ? '<span class="scan-button-title">📄 Mở file scan</span>' +
+        '<span class="scan-button-page">Trang ' + pageNumber + '</span>'
+      : '<span class="scan-button-title">📄 Mở file scan</span>';
+
   document.getElementById("mon").innerText=
     currentData.mon;
 
   document.getElementById("lyDo").value=
     currentData.lyDo;
-    document.getElementById("maDon").innerText += " (Trang " + currentData.soTrangPdf + ")";
 
   document.getElementById("progressText").innerText =
   "Đã xử lý "
