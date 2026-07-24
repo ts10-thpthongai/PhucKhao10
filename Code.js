@@ -3182,10 +3182,26 @@ function searchByApplicationId() {
   
 
 let currentAccepted = null;
+let priorApplicationCount = 0;
+let allPriorApplicationsCancelled = true;
 
 values.forEach(function(row, index){
 
   if (String(row[sbdCol]).trim() != sbd) return;
+
+  if (index + 2 < target.row) {
+
+    priorApplicationCount++;
+
+    if (
+      String(row[cancelCol]).trim() != "Đã rút đơn"
+    ) {
+
+      allPriorApplicationsCancelled = false;
+
+    }
+
+  }
 
   const status = String(row[paperCol]).trim();
 
@@ -3270,11 +3286,27 @@ let analysisIcon = "";
 
 if(currentAccepted == null){
 
-  analysisTitle = "LẦN NỘP ĐẦU TIÊN";
-analysisColor = "green";
-analysisIcon = "🟢";
-  analysisMessage =
-    "Thí sinh chưa từng nộp đơn giấy.\n\nCó thể tiếp nhận ngay.";
+  if (
+    priorApplicationCount > 0 &&
+    allPriorApplicationsCancelled
+  ) {
+
+    analysisTitle = "NGUYỆN VỌNG PHÚC KHẢO MỚI";
+    analysisColor = "yellow";
+    analysisIcon = "🟡";
+    analysisMessage =
+      "Thí sinh đã từng rút toàn bộ đơn phúc khảo trước đây.\n\nMã đơn hiện tại thuộc một nguyện vọng phúc khảo mới.";
+
+  }
+  else {
+
+    analysisTitle = "LẦN NỘP ĐẦU TIÊN";
+    analysisColor = "green";
+    analysisIcon = "🟢";
+    analysisMessage =
+      "Thí sinh chưa từng nộp đơn giấy.\n\nCó thể tiếp nhận ngay.";
+
+  }
 
 }
 
@@ -3799,48 +3831,15 @@ function showPdfLookupDialog_(cccd){
       )
       .getValues();
 
-      const cancelCol =
-  map["Hủy phúc khảo"] - 1;
-
   const cccdCol = map["Số căn cước (hoặc mã định danh cá nhân)"]-1;
   const sbdCol = map["Số báo danh"]-1;
   const nameCol = map["Họ tên"]-1;
   const maDonCol = map["Mã đơn"]-1;
   const monCol = map["Môn xin phúc khảo"]-1;
   const paperCol = map["Đã nộp đơn giấy"]-1;
+  const cancelCol = map["Hủy phúc khảo"]-1;
   const timeCol = map["Dấu thời gian"]-1;
   const linkCol = map["Link PDF"]-1;
-
-let hasCancelled = false;
-
-values.forEach(function(row){
-
-  if(
-    String(row[cccdCol]).trim() == cccd &&
-    String(row[cancelCol]).trim() == "Đã rút đơn"
-  ){
-
-    hasCancelled = true;
-
-  }
-
-});
-
-if(hasCancelled){
-
-  SpreadsheetApp.getUi().alert(
-
-    "⚠️ Đơn đã được hủy",
-
-    "Thí sinh này đã rút toàn bộ đơn phúc khảo.\n\nKhông thể tra cứu PDF để tiếp nhận.",
-
-    SpreadsheetApp.getUi().ButtonSet.OK
-
-  );
-
-  return;
-
-}
 
   const list=[];
 
@@ -3869,6 +3868,8 @@ if(hasCancelled){
       mon: row[monCol],
 
       status: row[paperCol],
+
+      cancelStatus: row[cancelCol],
 
       link: row[linkCol]
 
