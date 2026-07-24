@@ -33,6 +33,10 @@ FORM_ID: "1GOQ_t2t316Z2JuF3G5Y9nFr_w60eIeXbdaOYRcYaAOw",
 
   // Thời gian và địa điểm tiếp nhận yêu cầu đính chính
   CORRECTION_RECEIPT_TIME: "14:00, thứ Sáu, ngày 11/07/2026",
-  CORRECTION_RECEIPT_LOCATION: "Phòng Văn thư, trường THPT Hòn Gai"
+  CORRECTION_RECEIPT_LOCATION: "Phòng Văn thư, trường THPT Hòn Gai",
+
+  // Thời hạn phản hồi email xác nhận nguyện vọng phúc khảo
+  CONFIRM_RESPONSE_DEADLINE:
+  "13 giờ 30 phút, ngày 26/07/2026"
 
 };

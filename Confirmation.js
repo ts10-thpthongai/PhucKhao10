@@ -152,6 +152,9 @@ function sendConfirmationEmail() {
       template.mon = emailData.mon;
       template.confirmUrl = emailData.confirmUrl;
       template.correctionUrl = emailData.correctionUrl;
+      template.responseDeadline = String(
+        CONFIG.CONFIRM_RESPONSE_DEADLINE || ""
+      ).trim();
 
       MailApp.sendEmail({
         to: emailData.email,
