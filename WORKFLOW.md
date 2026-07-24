@@ -3,11 +3,11 @@
 ## Quy trình phát hành chuẩn
 
 1. Sửa mã trên VS Code.
-2. Kiểm thử mã trên Apps Script (nếu có thay đổi cần kiểm thử trước khi phát hành).
-3. Chạy `git add` và `git commit`.
-4. Chạy `git push` để lưu mã nguồn chính thức.
-5. Chạy `clasp push` để đồng bộ mã lên Apps Script.
-6. Chạy `clasp version` để tạo Version mới.
+2. Chạy `clasp push` để đồng bộ mã lên Apps Script (nếu vừa sửa trên VS Code).
+3. Kiểm thử trên Apps Script (nếu cần).
+4. Chạy `git add` và `git commit`.
+5. Chạy `git push`.
+6. Chạy `clasp version`.
 7. Trong Apps Script, chọn **Deploy → Manage deployments**.
 8. Chọn Deployment chính thức, chọn **Edit**, chọn Version mới rồi **Deploy**.
 9. Kiểm thử Web App bằng URL chính thức.
