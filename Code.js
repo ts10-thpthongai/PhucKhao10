@@ -302,6 +302,17 @@ function findCandidate_(
   const cccdCol =
     headerMap["Số CCCD"] - 1;
 
+  const learnedClassCol =
+    headerMap["Lớp đã học"];
+
+  if (!learnedClassCol) {
+
+    Logger.log(
+      'Thiếu cột "Lớp đã học" trong Data2. Không thể cập nhật lớp.'
+    );
+
+  }
+
   for (let i = 0; i < values.length; i++) {
 
     if (
@@ -326,7 +337,11 @@ function findCandidate_(
 
         nn: values[i][8],
 
-        toan: values[i][9]
+        toan: values[i][9],
+
+        lopDaHoc: learnedClassCol
+          ? String(values[i][learnedClassCol - 1] || "").trim()
+          : ""
 
       };
 
@@ -432,6 +447,34 @@ function fillCandidateInfo_(
     map["Toán"]
 
   ).setValue(data.toan);
+
+  const classCol =
+    map["Lớp"];
+
+  if (!classCol) {
+
+    Logger.log(
+      'Thiếu cột "Lớp" trong Data1. Không thể cập nhật lớp.'
+    );
+
+    return;
+
+  }
+
+  const learnedClass =
+    String(data.lopDaHoc || "").trim();
+
+  if (learnedClass !== "") {
+
+    sheet.getRange(
+
+      row,
+
+      classCol
+
+    ).setValue(learnedClass);
+
+  }
 
 }
 
