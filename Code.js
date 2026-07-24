@@ -2549,6 +2549,11 @@ function onOpen() {
       )
 
       .addItem(
+        "🗑️ Dọn Data3",
+        "clearData3"
+      )
+
+      .addItem(
         "⚠️ Dọn dữ liệu thử",
         "cleanTestData"
       )
@@ -2667,6 +2672,87 @@ function numberScanPdfPages() {
     " hồ sơ, bắt đầu từ trang 1 tại hồ sơ đầu tiên.",
     ui.ButtonSet.OK
   );
+}
+
+/*****************************************************
+ * Dọn toàn bộ dữ liệu trong Data3, giữ nguyên tiêu đề
+ *****************************************************/
+function clearData3() {
+
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName("Data3");
+
+  if (!sheet) {
+    ui.alert(
+      "Không thể dọn Data3",
+      'Không tìm thấy sheet "Data3".\n' +
+      "Không có dữ liệu nào được thay đổi.",
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  const dataStartRow = 2;
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  const hasDataRange =
+    lastRow >= dataStartRow && lastColumn > 0;
+  let recordCount = 0;
+
+  if (hasDataRange) {
+    const values = sheet
+      .getRange(
+        dataStartRow,
+        1,
+        lastRow - dataStartRow + 1,
+        lastColumn
+      )
+      .getValues();
+
+    recordCount = values.filter(function(row) {
+      return row.some(function(value) {
+        return value !== null &&
+          (typeof value !== "string" || value.trim() !== "");
+      });
+    }).length;
+  }
+
+  const message = recordCount > 0
+    ? "Hiện có:\n\n" +
+      recordCount + " hồ sơ\n\n" +
+      "sẽ bị làm trống.\n\n" +
+      "Tiêu đề cột và cấu trúc Data3 vẫn được giữ nguyên.\n\n" +
+      "Thao tác này không thể hoàn tác."
+    : "Hiện không có dữ liệu cần dọn.";
+
+  const confirmation = ui.alert(
+    "Dọn toàn bộ dữ liệu Data3?",
+    message,
+    ui.ButtonSet.YES_NO
+  );
+
+  if (confirmation !== ui.Button.YES) {
+    return;
+  }
+
+  const maxRows = sheet.getMaxRows();
+  const maxColumns = sheet.getMaxColumns();
+
+  if (maxRows >= dataStartRow && maxColumns > 0) {
+    const clearRange = sheet.getRange(
+      dataStartRow,
+      1,
+      maxRows - dataStartRow + 1,
+      maxColumns
+    );
+
+    clearRange.clearContent();
+    clearRange.clearNote();
+  }
+
+  ui.alert("Đã dọn xong Data3.");
 }
 
 /*****************************************************
