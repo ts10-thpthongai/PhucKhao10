@@ -1243,6 +1243,8 @@ function setDefaultPaperStatus(e) {
  *****************************************************/
 function sendReminderEmail() {
 
+  if (!requireAdmin_()) return;
+
   const SHEET_NAME = "Data1";
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -2461,16 +2463,54 @@ function getStudentData_(rowData, headerMap){
 /*****************************************************
  * Tạo menu Phúc khảo
  *****************************************************/
-function onOpen() {
+function getCurrentUserEmail_() {
+
+  return String(
+    Session.getActiveUser().getEmail() || ""
+  )
+    .trim()
+    .toLowerCase();
+
+}
+
+function isCurrentUserAdmin_() {
+
+  const adminEmail =
+    String(CONFIG.ADMIN_EMAIL || "")
+      .trim()
+      .toLowerCase();
+
+  return getCurrentUserEmail_() === adminEmail;
+
+}
+
+function requireAdmin_() {
+
+  if (isCurrentUserAdmin_()) {
+    return true;
+  }
 
   SpreadsheetApp
-  .getUi()
+    .getUi()
+    .alert(
+      "Tài khoản hiện tại không có quyền sử dụng chức năng này."
+    );
 
-  .createMenu("📋 Phúc khảo")
+  return false;
 
-  .addSubMenu(
+}
 
-    SpreadsheetApp.getUi()
+function onOpen() {
+
+  const ui = SpreadsheetApp.getUi();
+  const isAdmin = isCurrentUserAdmin_();
+
+  const menu =
+    ui.createMenu("📋 Phúc khảo");
+
+  menu.addSubMenu(
+
+    ui
 
       .createMenu("📥 Tiếp nhận")
 
@@ -2491,76 +2531,89 @@ function onOpen() {
 
   )
 
-  .addSubMenu(
+  if (isAdmin) {
 
-    SpreadsheetApp.getUi()
+    menu.addSubMenu(
 
-      .createMenu("📧 Email")
+      ui
 
-      .addItem(
-        "🔔 Nhắc nộp đơn",
-        "sendReminderEmail"
-      )
+        .createMenu("📧 Email")
 
-      .addItem(
-        "✅ Gửi kết quả",
-        "sendResultEmail"
-      )
+        .addItem(
+          "🔔 Nhắc nộp đơn",
+          "sendReminderEmail"
+        )
 
-      .addItem(
-        "❓ Gửi xác nhận",
-        "sendConfirmationEmail"
-      )
+        .addItem(
+          "✅ Gửi kết quả",
+          "sendResultEmail"
+        )
 
-  )
+        .addItem(
+          "❓ Gửi xác nhận",
+          "sendConfirmationEmail"
+        )
 
-  .addSubMenu(
+    );
 
-    SpreadsheetApp.getUi()
+  }
 
-      .createMenu("📊 Theo dõi")
+  const trackingMenu =
+    ui
 
-      .addItem(
-        "📈 Thống kê",
-        "countPaperSubmitted"
-      )
+    .createMenu("📊 Theo dõi")
 
-      .addItem(
-        "🌐 Đăng ký TSĐC",
-        "openWebRegistrationDialog"
-      )
+    .addItem(
+      "📈 Thống kê",
+      "countPaperSubmitted"
+    );
 
-      .addItem(
-        "📜 Nhật ký",
-        "operationLog"
-      )
+  if (isAdmin) {
 
-  )
+    trackingMenu
 
-  .addSubMenu(
+    .addItem(
+      "🌐 Đăng ký TSĐC",
+      "openWebRegistrationDialog"
+    )
 
-    SpreadsheetApp.getUi()
+    .addItem(
+      "📜 Nhật ký",
+      "operationLog"
+    );
 
-      .createMenu("⚙️ Công cụ")
+  }
 
-      .addItem(
-        "📄 Đánh số trang file scan đơn giấy",
-        "numberScanPdfPages"
-      )
+  menu.addSubMenu(trackingMenu);
 
-      .addItem(
-        "🗑️ Dọn Data3",
-        "clearData3"
-      )
+  if (isAdmin) {
 
-      .addItem(
-        "⚠️ Dọn dữ liệu thử",
-        "cleanTestData"
-      )
+    menu.addSubMenu(
 
-  )
+      ui
 
-  .addToUi();
+        .createMenu("⚙️ Công cụ")
+
+        .addItem(
+          "📄 Đánh số trang file scan đơn giấy",
+          "numberScanPdfPages"
+        )
+
+        .addItem(
+          "🗑️ Dọn Data3",
+          "clearData3"
+        )
+
+        .addItem(
+          "⚠️ Dọn dữ liệu thử",
+          "cleanTestData"
+        )
+
+    );
+
+  }
+
+  menu.addToUi();
 
 }
 
@@ -2568,6 +2621,8 @@ function onOpen() {
  * Đánh số trang file scan đơn giấy trong Data3
  *****************************************************/
 function numberScanPdfPages() {
+
+  if (!requireAdmin_()) return;
 
   const ui = SpreadsheetApp.getUi();
   const sheet = SpreadsheetApp
@@ -2679,6 +2734,8 @@ function numberScanPdfPages() {
  *****************************************************/
 function clearData3() {
 
+  if (!requireAdmin_()) return;
+
   const ui = SpreadsheetApp.getUi();
   const sheet = SpreadsheetApp
     .getActiveSpreadsheet()
@@ -2761,6 +2818,8 @@ function clearData3() {
  * Hiển thị xác nhận
  *****************************************************/
 function cleanTestData() {
+
+  if (!requireAdmin_()) return;
 
   const ui = SpreadsheetApp.getUi();
 
@@ -4292,6 +4351,8 @@ Trường THPT Hòn Gai
  *****************************************************/
 function operationLog() {
 
+  if (!requireAdmin_()) return;
+
   const ui = SpreadsheetApp.getUi();
 
   const response = ui.prompt(
@@ -4550,6 +4611,8 @@ history.push({
  *****************************************************/
 function openWebRegistrationDialog() {
 
+  if (!requireAdmin_()) return;
+
   const html =
     HtmlService
       .createHtmlOutputFromFile("GiaoDienWebDK")
@@ -4669,6 +4732,8 @@ function finishWebRegistration(row){
  * Gửi kết quả phúc khảo
  *****************************************************/
 function sendResultEmail(){
+if (!requireAdmin_()) return;
+
 const ui = SpreadsheetApp.getUi();
 
 const folder =

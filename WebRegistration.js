@@ -4,6 +4,8 @@
  *****************************************************/
 function openWebRegistrationDialog(){
 
+  if (!requireAdmin_()) return;
+
   const html =
     HtmlService
       .createTemplateFromFile("GiaoDienWebDK")

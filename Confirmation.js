@@ -121,6 +121,8 @@ return {
 
 function sendConfirmationEmail() {
 
+  if (!requireAdmin_()) return;
+
   assignConfirmationTokens_();
   const sheet = getConfirmationSheet_();
   const map = getConfirmationColumnMap_();
