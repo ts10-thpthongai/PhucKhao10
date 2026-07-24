@@ -147,7 +147,7 @@ function processSubmission_(e) {
     Hệ thống <strong>chưa thể tạo Đơn phúc khảo</strong> vì
     <strong>Số căn cước (hoặc mã định danh cá nhân)</strong> em đã nhập
     <strong>không khớp</strong> với dữ liệu trong danh sách dự thi kỳ thi tuyển sinh vào lớp 10
-    Trường THPT Hòn Gai năm học 2026–2027.
+    Trường THPT Hòn Gai ${CONFIG.SCHOOL_YEAR}.
   </p>
 
   <p>
@@ -171,7 +171,7 @@ function processSubmission_(e) {
   <table cellpadding="4" cellspacing="0" style="border-collapse: collapse;">
     <tr>
       <td><strong>📞 Điện thoại:</strong></td>
-      <td>0396656826</td>
+      <td>${CONFIG.CONTACT_PHONE}</td>
     </tr>
     <tr>
       <td><strong>🌐 Facebook:</strong></td>
@@ -917,7 +917,7 @@ const lanGui =
 số báo danh
 <b>${soBaoDanh}</b>
 đơn phúc khảo <b>lần thứ ${lanGui}</b>
-của kỳ thi tuyển sinh vào lớp 10 năm học 2026–2027.
+của kỳ thi tuyển sinh vào lớp 10 ${CONFIG.SCHOOL_YEAR}.
   </p>
 
 <p style="background:#fff8e1;
@@ -946,10 +946,7 @@ ${lanGui}
   Thời hạn nộp đơn
   </b>
   <br>
-  Từ
-  09h00 ngày 07/07/2026
-  đến
-  11h00 ngày 09/07/2026
+  ${CONFIG.APPLICATION_SUBMISSION_PERIOD}
   </p>
 
   <p>
@@ -984,7 +981,7 @@ style="border-collapse:collapse">
 
 <td>
 
-0396656826
+${CONFIG.CONTACT_PHONE}
 
 </td>
 
@@ -1759,9 +1756,11 @@ Hạn cuối tiếp nhận:
 
 <br>
 
-Trước <strong>11:00</strong>,
-Thứ Năm,
-ngày <strong>09/07/2026</strong>.
+${CONFIG.APPLICATION_RECEIPT_DEADLINE
+  .replace(
+    /^Trước ([^,]+), ([^,]+), ngày (.+)$/,
+    "Trước <strong>$1</strong>,\n$2,\nngày <strong>$3</strong>"
+  )}.
 
 </p>
 
@@ -1791,7 +1790,7 @@ style="border-collapse:collapse">
 
 <td>
 
-0396656826
+${CONFIG.CONTACT_PHONE}
 
 </td>
 
@@ -1970,9 +1969,11 @@ Hạn cuối tiếp nhận:
 
 <br>
 
-Trước <strong>11:00</strong>,
-Thứ Năm,
-ngày <strong>09/07/2026</strong>.
+${CONFIG.APPLICATION_RECEIPT_DEADLINE
+  .replace(
+    /^Trước ([^,]+), ([^,]+), ngày (.+)$/,
+    "Trước <strong>$1</strong>,\n$2,\nngày <strong>$3</strong>"
+  )}.
 
 </p>
 
@@ -1996,7 +1997,7 @@ ngày <strong>09/07/2026</strong>.
 
 <td>
 
-0396656826
+${CONFIG.CONTACT_PHONE}
 
 </td>
 
@@ -4252,7 +4253,7 @@ style="border-collapse:collapse">
 
 <td>
 
-0396656826
+${CONFIG.CONTACT_PHONE}
 
 </td>
 
@@ -4945,6 +4946,12 @@ hoTen;
 
 template.pdfUrl =
 pdfUrl;
+
+template.schoolYear =
+CONFIG.SCHOOL_YEAR;
+
+template.contactPhone =
+CONFIG.CONTACT_PHONE;
 
 const html =
 template

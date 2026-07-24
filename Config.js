@@ -18,6 +18,14 @@ FORM_ID: "1GOQ_t2t316Z2JuF3G5Y9nFr_w60eIeXbdaOYRcYaAOw",
   // Email quản trị
   ADMIN_EMAIL: "ts10.thpthongai@gmail.com",
 
+  // Nội dung thay đổi theo năm học
+  SCHOOL_YEAR: "năm học 2026–2027",
+  APPLICATION_SUBMISSION_PERIOD:
+    "Từ 09h00 ngày 07/07/2026 đến 11h00 ngày 09/07/2026",
+  APPLICATION_RECEIPT_DEADLINE:
+    "Trước 11:00, Thứ Năm, ngày 09/07/2026",
+  CONTACT_PHONE: "0396656826",
+
   // ID thư mục lưu công văn kết quả phúc khảo
   RESULT_FOLDER_ID: "1pebzTZmQVuQfvhwUt9XprfNKYiH3ikI9",
 

@@ -157,6 +157,7 @@ function sendConfirmationEmail() {
       template.responseDeadline = String(
         CONFIG.CONFIRM_RESPONSE_DEADLINE || ""
       ).trim();
+      template.contactPhone = CONFIG.CONTACT_PHONE;
 
       MailApp.sendEmail({
         to: emailData.email,
