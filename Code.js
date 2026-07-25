@@ -52,13 +52,15 @@ function onFormSubmit(e) {
  *****************************************************/
 function processSubmission_(e) {
 
+  const config = getConfig_();
+
   Logger.log("=======================================");
   Logger.log("Bắt đầu xử lý");
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  const sheetData1 = ss.getSheetByName(CONFIG.DATA1);
-  const sheetData2 = ss.getSheetByName(CONFIG.DATA2);
+  const sheetData1 = ss.getSheetByName(config.DATA1);
+  const sheetData2 = ss.getSheetByName(config.DATA2);
 
   const row = e.range.getRow();
 
@@ -147,7 +149,7 @@ function processSubmission_(e) {
     Hệ thống <strong>chưa thể tạo Đơn phúc khảo</strong> vì
     <strong>Số căn cước (hoặc mã định danh cá nhân)</strong> em đã nhập
     <strong>không khớp</strong> với dữ liệu trong danh sách dự thi kỳ thi tuyển sinh vào lớp 10
-    Trường THPT Hòn Gai ${CONFIG.SCHOOL_YEAR}.
+    ${config.SCHOOL_NAME} ${config.SCHOOL_YEAR}.
   </p>
 
   <p>
@@ -155,8 +157,8 @@ function processSubmission_(e) {
   </p>
 
   <p>
-    <a href="https://forms.gle/G9bNAMfTHDkvZk8G6" target="_blank">
-      https://forms.gle/G9bNAMfTHDkvZk8G6
+    <a href="${config.APPLICATION_FORM_URL}" target="_blank">
+      ${config.APPLICATION_FORM_URL}
     </a>
   </p>
 
@@ -171,21 +173,21 @@ function processSubmission_(e) {
   <table cellpadding="4" cellspacing="0" style="border-collapse: collapse;">
     <tr>
       <td><strong>📞 Điện thoại:</strong></td>
-      <td>${CONFIG.CONTACT_PHONE}</td>
+      <td>${config.CONTACT_PHONE}</td>
     </tr>
     <tr>
       <td><strong>🌐 Facebook:</strong></td>
       <td>
-        <a href="https://www.facebook.com/c3hongai.hlqn" target="_blank">
-          THPT Hòn Gai - tỉnh Quảng Ninh
+        <a href="${config.CONTACT_FACEBOOK_URL}" target="_blank">
+          ${config.CONTACT_FACEBOOK_NAME}
         </a>
       </td>
     </tr>
     <tr>
       <td><strong>✉️ Email:</strong></td>
       <td>
-        <a href="mailto:ts10.thpthongai@gmail.com">
-          ts10.thpthongai@gmail.com
+        <a href="mailto:${config.CONTACT_EMAIL}">
+          ${config.CONTACT_EMAIL}
         </a>
       </td>
     </tr>
@@ -193,7 +195,7 @@ function processSubmission_(e) {
 
   <p style="margin-top: 24px;">
     Trân trọng,<br>
-    <strong>Ban tuyển sinh Trường THPT Hòn Gai</strong>
+    <strong>Ban tuyển sinh ${config.SCHOOL_NAME}</strong>
   </p>
 
 </div>
@@ -292,6 +294,8 @@ function findCandidate_(
 
 ) {
 
+  const config = getConfig_();
+
   const lastRow = sheet.getLastRow();
 
   const values =
@@ -308,7 +312,9 @@ function findCandidate_(
   if (!learnedClassCol) {
 
     Logger.log(
-      'Thiếu cột "Lớp đã học" trong Data2. Không thể cập nhật lớp.'
+      'Thiếu cột "Lớp đã học" trong ' +
+      config.DATA2 +
+      ". Không thể cập nhật lớp."
     );
 
   }
@@ -369,6 +375,8 @@ function fillCandidateInfo_(
   data
 
 ) {
+
+  const config = getConfig_();
 
   sheet.getRange(
 
@@ -454,7 +462,9 @@ function fillCandidateInfo_(
   if (!classCol) {
 
     Logger.log(
-      'Thiếu cột "Lớp" trong Data1. Không thể cập nhật lớp.'
+      'Thiếu cột "Lớp" trong ' +
+      config.DATA1 +
+      ". Không thể cập nhật lớp."
     );
 
     return;
@@ -549,15 +559,17 @@ function generatePdfAndSend_(
   rowData
 ) {
 
+  const config = getConfig_();
+
   try {
 
     Logger.log("Bắt đầu tạo PDF");
 
     const folder =
-      DriveApp.getFolderById(CONFIG.PDF_FOLDER_ID);
+      DriveApp.getFolderById(config.PDF_FOLDER_ID);
 
     const template =
-      DriveApp.getFileById(CONFIG.TEMPLATE_ID);
+      DriveApp.getFileById(config.TEMPLATE_ID);
 
     /*************************************************
      * Copy template
@@ -873,6 +885,8 @@ function sendPdfEmail_(
 
 ){
 
+  const config = getConfig_();
+
   Logger.log("Bắt đầu gửi email");
 
   const hoTen =
@@ -912,12 +926,12 @@ const lanGui =
   <div style="font-family:Arial;font-size:14px;line-height:1.7">
 
   <p>
-  Ban tuyển sinh Trường THPT Hòn Gai gửi thí sinh
+  Ban tuyển sinh ${config.SCHOOL_NAME} gửi thí sinh
 <b>${hoTen}</b>,
 số báo danh
 <b>${soBaoDanh}</b>
 đơn phúc khảo <b>lần thứ ${lanGui}</b>
-của kỳ thi tuyển sinh vào lớp 10 ${CONFIG.SCHOOL_YEAR}.
+của kỳ thi tuyển sinh vào lớp 10 ${config.SCHOOL_YEAR}.
   </p>
 
 <p style="background:#fff8e1;
@@ -939,14 +953,14 @@ ${lanGui}
   ký tên
   và đem nộp bản giấy
   tại phòng Văn thư
-  trường THPT Hòn Gai.
+  ${config.SCHOOL_NAME.replace(/^Trường/, "trường")}.
   </p>
   <p>
   <b>
   Thời hạn nộp đơn
   </b>
   <br>
-  ${CONFIG.APPLICATION_SUBMISSION_PERIOD}
+  ${config.APPLICATION_SUBMISSION_PERIOD}
   </p>
 
   <p>
@@ -981,7 +995,7 @@ style="border-collapse:collapse">
 
 <td>
 
-${CONFIG.CONTACT_PHONE}
+${config.CONTACT_PHONE}
 
 </td>
 
@@ -997,9 +1011,9 @@ ${CONFIG.CONTACT_PHONE}
 
 <td>
 
-<a href="https://www.facebook.com/c3hongai.hlqn">
+<a href="${config.CONTACT_FACEBOOK_URL}">
 
-THPT Hòn Gai - tỉnh Quảng Ninh
+${config.CONTACT_FACEBOOK_NAME}
 
 </a>
 
@@ -1017,9 +1031,9 @@ THPT Hòn Gai - tỉnh Quảng Ninh
 
 <td>
 
-<a href="mailto:ts10.thpthongai@gmail.com">
+<a href="mailto:${config.CONTACT_EMAIL}">
 
-ts10.thpthongai@gmail.com
+${config.CONTACT_EMAIL}
 
 </a>
 
@@ -1043,7 +1057,7 @@ Ban tuyển sinh
 
 <br>
 
-Trường THPT Hòn Gai
+${config.SCHOOL_NAME}
 
 </strong>
 
@@ -1140,7 +1154,7 @@ Trường THPT Hòn Gai
 
         MailApp.sendEmail({
 
-          to:CONFIG.ADMIN_EMAIL,
+          to:config.ADMIN_EMAIL,
 
           subject:
 
@@ -1208,10 +1222,11 @@ ${err}
  *****************************************************/
 function setDefaultPaperStatus(e) {
 
+  const config = getConfig_();
   const sheet = e.range.getSheet();
 
   // Chỉ xử lý trên Data1
-  if (sheet.getName() !== "Data1") return;
+  if (sheet.getName() !== config.DATA1) return;
 
   const row = e.range.getRow();
 
@@ -1242,10 +1257,10 @@ function sendReminderEmail() {
 
   if (!requireAdmin_()) return;
 
-  const SHEET_NAME = "Data1";
+  const config = getConfig_();
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_NAME);
+  const sheet = ss.getSheetByName(config.DATA1);
 
   const ui = SpreadsheetApp.getUi();
 
@@ -1525,6 +1540,7 @@ else{
  *****************************************************/
 function sendReminderEmailCore_(sheet, headerMap, targets) {
 
+  const config = getConfig_();
   let success = 0;
   let failed = 0;
 
@@ -1566,7 +1582,9 @@ function sendReminderEmailCore_(sheet, headerMap, targets) {
       data[maDonCol];
 
     const subject =
-      "[THPT Hòn Gai] Nhắc hoàn tất thủ tục nộp đơn phúc khảo bản giấy";
+      "[" +
+      config.SCHOOL_SHORT_NAME +
+      "] Nhắc hoàn tất thủ tục nộp đơn phúc khảo bản giấy";
 
     let html = "";
 
@@ -1702,6 +1720,8 @@ function buildReminderEmailHtml_(
 
 ){
 
+const config = getConfig_();
+
 return `
 
 <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.8;color:#333;max-width:720px;">
@@ -1717,7 +1737,7 @@ số báo danh
 
 <p>
 
-Ban tuyển sinh Trường THPT Hòn Gai ghi nhận em đã đăng ký
+Ban tuyển sinh ${config.SCHOOL_NAME} ghi nhận em đã đăng ký
 <strong>phúc khảo trực tuyến thành công</strong>,
 với mong muốn được xem xét lại bài thi các môn:
 
@@ -1756,7 +1776,7 @@ Hạn cuối tiếp nhận:
 
 <br>
 
-${CONFIG.APPLICATION_RECEIPT_DEADLINE
+${config.APPLICATION_RECEIPT_DEADLINE
   .replace(
     /^Trước ([^,]+), ([^,]+), ngày (.+)$/,
     "Trước <strong>$1</strong>,\n$2,\nngày <strong>$3</strong>"
@@ -1790,7 +1810,7 @@ style="border-collapse:collapse">
 
 <td>
 
-${CONFIG.CONTACT_PHONE}
+${config.CONTACT_PHONE}
 
 </td>
 
@@ -1806,9 +1826,9 @@ ${CONFIG.CONTACT_PHONE}
 
 <td>
 
-<a href="https://www.facebook.com/c3hongai.hlqn">
+<a href="${config.CONTACT_FACEBOOK_URL}">
 
-THPT Hòn Gai - tỉnh Quảng Ninh
+${config.CONTACT_FACEBOOK_NAME}
 
 </a>
 
@@ -1826,9 +1846,9 @@ THPT Hòn Gai - tỉnh Quảng Ninh
 
 <td>
 
-<a href="mailto:ts10.thpthongai@gmail.com">
+<a href="mailto:${config.CONTACT_EMAIL}">
 
-ts10.thpthongai@gmail.com
+${config.CONTACT_EMAIL}
 
 </a>
 
@@ -1852,7 +1872,7 @@ Ban tuyển sinh
 
 <br>
 
-Trường THPT Hòn Gai
+${config.SCHOOL_NAME}
 
 </strong>
 
@@ -1883,6 +1903,8 @@ function buildReminderEmailChangeHtml_(
   maDonMoi
 
 ){
+
+const config = getConfig_();
 
 return `
 
@@ -1969,7 +1991,7 @@ Hạn cuối tiếp nhận:
 
 <br>
 
-${CONFIG.APPLICATION_RECEIPT_DEADLINE
+${config.APPLICATION_RECEIPT_DEADLINE
   .replace(
     /^Trước ([^,]+), ([^,]+), ngày (.+)$/,
     "Trước <strong>$1</strong>,\n$2,\nngày <strong>$3</strong>"
@@ -1997,7 +2019,7 @@ ${CONFIG.APPLICATION_RECEIPT_DEADLINE
 
 <td>
 
-${CONFIG.CONTACT_PHONE}
+${config.CONTACT_PHONE}
 
 </td>
 
@@ -2013,9 +2035,9 @@ ${CONFIG.CONTACT_PHONE}
 
 <td>
 
-<a href="https://www.facebook.com/c3hongai.hlqn">
+<a href="${config.CONTACT_FACEBOOK_URL}">
 
-THPT Hòn Gai - tỉnh Quảng Ninh
+${config.CONTACT_FACEBOOK_NAME}
 
 </a>
 
@@ -2033,9 +2055,9 @@ THPT Hòn Gai - tỉnh Quảng Ninh
 
 <td>
 
-<a href="mailto:ts10.thpthongai@gmail.com">
+<a href="mailto:${config.CONTACT_EMAIL}">
 
-ts10.thpthongai@gmail.com
+${config.CONTACT_EMAIL}
 
 </a>
 
@@ -2059,7 +2081,7 @@ Ban tuyển sinh
 
 <br>
 
-Trường THPT Hòn Gai
+${config.SCHOOL_NAME}
 
 </strong>
 
@@ -2079,10 +2101,11 @@ Trường THPT Hòn Gai
  *****************************************************/
 function setDefaultWebRegistrationStatus(e) {
 
+  const config = getConfig_();
   const sheet = e.range.getSheet();
 
   // Chỉ xử lý trên Data1
-  if (sheet.getName() !== "Data1") return;
+  if (sheet.getName() !== config.DATA1) return;
 
   const row = e.range.getRow();
 
@@ -2110,10 +2133,11 @@ function setDefaultWebRegistrationStatus(e) {
  *****************************************************/
 function countPaperSubmitted() {
 
+  const config = getConfig_();
   const sheet =
     SpreadsheetApp
       .getActiveSpreadsheet()
-      .getSheetByName("Data1");
+      .getSheetByName(config.DATA1);
 
   const headerMap =
     getColumnMap_(sheet);
@@ -2476,8 +2500,9 @@ function getCurrentUserEmail_() {
 
 function isCurrentUserAdmin_() {
 
+  const config = getConfig_();
   const adminEmail =
-    String(CONFIG.ADMIN_EMAIL || "")
+    String(config.ADMIN_EMAIL)
       .trim()
       .toLowerCase();
 
@@ -2822,6 +2847,7 @@ function cleanTestData() {
 
   if (!requireAdmin_()) return;
 
+  const config = getConfig_();
   const ui = SpreadsheetApp.getUi();
 
   const result = ui.alert(
@@ -2842,7 +2868,7 @@ function cleanTestData() {
 
     "✓ File PDF trong Drive\n" +
 
-    "✓ Hàng dữ liệu trong Data1\n\n" +
+    "✓ Hàng dữ liệu trong " + config.DATA1 + "\n\n" +
 
     "Không thể hoàn tác.\n\n" +
 
@@ -2902,7 +2928,7 @@ ui.alert(
 
   +
 
-  "\nData1: "
+  "\n" + config.DATA1 + ": "
   + deletedRows +
   " hàng dữ liệu",
 
@@ -2932,8 +2958,9 @@ catch(err){
  *****************************************************/
 function deleteTestResponses_(){
 
+  const config = getConfig_();
   const form =
-    FormApp.openById(CONFIG.FORM_ID);
+    FormApp.openById(config.FORM_ID);
 
   const responses =
     form.getResponses();
@@ -2996,10 +3023,11 @@ function deleteTestResponses_(){
  *****************************************************/
 function deleteTestPdf_(){
 
+  const config = getConfig_();
   const sheet =
     SpreadsheetApp
       .getActiveSpreadsheet()
-      .getSheetByName(CONFIG.DATA1);
+      .getSheetByName(config.DATA1);
 
   const headerMap =
     getColumnMap_(sheet);
@@ -3084,10 +3112,11 @@ function deleteTestPdf_(){
  *****************************************************/
 function deleteTestRows_(){
 
+  const config = getConfig_();
   const sheet =
     SpreadsheetApp
       .getActiveSpreadsheet()
-      .getSheetByName(CONFIG.DATA1);
+      .getSheetByName(config.DATA1);
 
   const headerMap =
     getColumnMap_(sheet);
@@ -3151,6 +3180,7 @@ function deleteTestRows_(){
  *****************************************************/
 function searchByApplicationId() {
 
+  const config = getConfig_();
   const ui = SpreadsheetApp.getUi();
 
   const response = ui.prompt(
@@ -3174,7 +3204,7 @@ function searchByApplicationId() {
   const sheet =
     SpreadsheetApp
       .getActiveSpreadsheet()
-      .getSheetByName(CONFIG.DATA1);
+      .getSheetByName(config.DATA1);
 
   const headerMap =
     getColumnMap_(sheet);
@@ -3504,10 +3534,11 @@ const dialogData = {
  *****************************************************/
 function acceptApplication(targetRow){
 
+  const config = getConfig_();
   const sheet =
     SpreadsheetApp
       .getActiveSpreadsheet()
-      .getSheetByName(CONFIG.DATA1);
+      .getSheetByName(config.DATA1);
 
   const headerMap =
     getColumnMap_(sheet);
@@ -3653,9 +3684,10 @@ function showAcceptSuccess(){
  *****************************************************/
 function rebuildAcceptedList() {
 
+  const config = getConfig_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  const source = ss.getSheetByName("Data1");
+  const source = ss.getSheetByName(config.DATA1);
   const target = ss.getSheetByName("Data3");
 
   const sourceMap = getColumnMap_(source);
@@ -3873,10 +3905,11 @@ function searchPdfByCitizenId(){
  *****************************************************/
 function showPdfLookupDialog_(cccd){
 
+  const config = getConfig_();
   const sheet =
     SpreadsheetApp
       .getActiveSpreadsheet()
-      .getSheetByName(CONFIG.DATA1);
+      .getSheetByName(config.DATA1);
 
   const map =
     getColumnMap_(sheet);
@@ -4016,10 +4049,11 @@ function cancelApplication(){
  *****************************************************/
 function cancelApplicationCore_(cccd){
 
+  const config = getConfig_();
   const sheet =
     SpreadsheetApp
       .getActiveSpreadsheet()
-      .getSheetByName(CONFIG.DATA1);
+      .getSheetByName(config.DATA1);
 
   const map =
     getColumnMap_(sheet);
@@ -4158,12 +4192,13 @@ function cancelApplicationCore_(cccd){
  *****************************************************/
 function sendCancelEmail_(rows){
 
+  const config = getConfig_();
   const email=
     rows[0].data[
       getColumnMap_(
         SpreadsheetApp
           .getActiveSpreadsheet()
-          .getSheetByName(CONFIG.DATA1)
+          .getSheetByName(config.DATA1)
       )["Địa chỉ email để nhận đơn phúc khảo"]-1
     ];
 
@@ -4172,7 +4207,7 @@ function sendCancelEmail_(rows){
       getColumnMap_(
         SpreadsheetApp
           .getActiveSpreadsheet()
-          .getSheetByName(CONFIG.DATA1)
+          .getSheetByName(config.DATA1)
       )["Họ tên"]-1
     ];
 
@@ -4180,7 +4215,7 @@ function sendCancelEmail_(rows){
     getColumnMap_(
       SpreadsheetApp
         .getActiveSpreadsheet()
-        .getSheetByName(CONFIG.DATA1)
+        .getSheetByName(config.DATA1)
     )["Mã đơn"]-1;
 
   let ds="";
@@ -4203,7 +4238,7 @@ Gửi thí sinh
 
 <p>
 
-Ban tuyển sinh Trường THPT Hòn Gai xác nhận đã thực hiện
+Ban tuyển sinh ${config.SCHOOL_NAME} xác nhận đã thực hiện
 <b>hủy đăng ký phúc khảo</b>
 theo đề nghị của em.
 
@@ -4253,7 +4288,7 @@ style="border-collapse:collapse">
 
 <td>
 
-${CONFIG.CONTACT_PHONE}
+${config.CONTACT_PHONE}
 
 </td>
 
@@ -4269,9 +4304,9 @@ ${CONFIG.CONTACT_PHONE}
 
 <td>
 
-<a href="https://www.facebook.com/c3hongai.hlqn">
+<a href="${config.CONTACT_FACEBOOK_URL}">
 
-THPT Hòn Gai - tỉnh Quảng Ninh
+${config.CONTACT_FACEBOOK_NAME}
 
 </a>
 
@@ -4289,9 +4324,9 @@ THPT Hòn Gai - tỉnh Quảng Ninh
 
 <td>
 
-<a href="mailto:ts10.thpthongai@gmail.com">
+<a href="mailto:${config.CONTACT_EMAIL}">
 
-ts10.thpthongai@gmail.com
+${config.CONTACT_EMAIL}
 
 </a>
 
@@ -4315,7 +4350,7 @@ Ban tuyển sinh
 
 <br>
 
-Trường THPT Hòn Gai
+${config.SCHOOL_NAME}
 
 </strong>
 
@@ -4331,7 +4366,9 @@ Trường THPT Hòn Gai
       to:email,
 
       subject:
-      "[THPT Hòn Gai] Xác nhận đã hủy đăng ký phúc khảo",
+      "[" +
+      config.SCHOOL_SHORT_NAME +
+      "] Xác nhận đã hủy đăng ký phúc khảo",
 
       htmlBody:html
 
@@ -4354,6 +4391,7 @@ function operationLog() {
 
   if (!requireAdmin_()) return;
 
+  const config = getConfig_();
   const ui = SpreadsheetApp.getUi();
 
   const response = ui.prompt(
@@ -4378,7 +4416,7 @@ function operationLog() {
   const sheet =
     SpreadsheetApp
       .getActiveSpreadsheet()
-      .getSheetByName(CONFIG.DATA1);
+      .getSheetByName(config.DATA1);
 
   const headerMap =
     getColumnMap_(sheet);
@@ -4735,11 +4773,12 @@ function finishWebRegistration(row){
 function sendResultEmail(){
 if (!requireAdmin_()) return;
 
+const config = getConfig_();
 const ui = SpreadsheetApp.getUi();
 
 const folder =
 DriveApp.getFolderById(
-  CONFIG.RESULT_FOLDER_ID
+  config.RESULT_FOLDER_ID
 );
 const files = folder.getFiles();
 if(!files.hasNext()){
@@ -4913,6 +4952,7 @@ function sendOneResultEmail_(
   sheet
 ){
 try {
+const config = getConfig_();
 const hoTen =
 rowData[
 headerMap["Họ tên"]-1
@@ -4948,10 +4988,22 @@ template.pdfUrl =
 pdfUrl;
 
 template.schoolYear =
-CONFIG.SCHOOL_YEAR;
+config.SCHOOL_YEAR;
 
 template.contactPhone =
-CONFIG.CONTACT_PHONE;
+config.CONTACT_PHONE;
+
+template.schoolName =
+config.SCHOOL_NAME;
+
+template.contactEmail =
+config.CONTACT_EMAIL;
+
+template.contactFacebookName =
+config.CONTACT_FACEBOOK_NAME;
+
+template.contactFacebookUrl =
+config.CONTACT_FACEBOOK_URL;
 
 const html =
 template
@@ -4964,7 +5016,9 @@ to:email,
 
 subject:
 
-"[THPT Hòn Gai] Thông báo kết quả phúc khảo - "
+"["
++ config.SCHOOL_SHORT_NAME
++ "] Thông báo kết quả phúc khảo - "
 
 + soBaoDanh
 

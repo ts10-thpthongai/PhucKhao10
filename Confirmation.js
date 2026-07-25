@@ -67,6 +67,7 @@ function validateConfirmationColumns_() {
  * Gửi email xác nhận
  *****************************************************/
 function buildConfirmationEmail_(row) {
+const config = getConfig_();
 const sheet = getConfirmationSheet_();
 const map = getConfirmationColumnMap_();
 const data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -75,12 +76,12 @@ const token =
   data[map["Mã xác nhận"] - 1];
 
 const webAppUrl = String(
-  CONFIG.CONFIRM_WEB_APP_URL || ""
+  config.CONFIRM_WEB_APP_URL
 ).trim();
 
 if (webAppUrl === "") {
   throw new Error(
-    "Chưa cấu hình CONFIRM_WEB_APP_URL trong Config.js."
+    "Chưa cấu hình CONFIRM_WEB_APP_URL trong sheet Config."
   );
 }
 
@@ -123,6 +124,8 @@ function sendConfirmationEmail() {
 
   if (!requireAdmin_()) return;
 
+  const config = getConfig_();
+
   assignConfirmationTokens_();
   const sheet = getConfirmationSheet_();
   const map = getConfirmationColumnMap_();
@@ -155,14 +158,22 @@ function sendConfirmationEmail() {
       template.confirmUrl = emailData.confirmUrl;
       template.correctionUrl = emailData.correctionUrl;
       template.responseDeadline = String(
-        CONFIG.CONFIRM_RESPONSE_DEADLINE || ""
+        config.CONFIRM_RESPONSE_DEADLINE
       ).trim();
-      template.contactPhone = CONFIG.CONTACT_PHONE;
+      template.contactPhone = config.CONTACT_PHONE;
+      template.schoolName = config.SCHOOL_NAME;
+      template.contactEmail = config.CONTACT_EMAIL;
+      template.contactFacebookName =
+        config.CONTACT_FACEBOOK_NAME;
+      template.contactFacebookUrl =
+        config.CONTACT_FACEBOOK_URL;
 
       MailApp.sendEmail({
         to: emailData.email,
         subject:
-          "[THPT Hòn Gai] Xác nhận nguyện vọng phúc khảo - " +
+          "[" +
+          config.SCHOOL_SHORT_NAME +
+          "] Xác nhận nguyện vọng phúc khảo - " +
           emailData.sbd,
         body:
           "Vui lòng xem nội dung email ở định dạng HTML.",
@@ -392,6 +403,7 @@ function showConfirmedCorrectionUnavailablePage_(row) {
 
 function showCorrectionPage_(row) {
 
+  const config = getConfig_();
   const correction = getStoredCorrection_(row);
 
   return renderConfirmationPage_(
@@ -405,8 +417,8 @@ function showCorrectionPage_(row) {
     "warning",
     {
       correction: correction,
-      receiptTime: CONFIG.CORRECTION_RECEIPT_TIME,
-      receiptLocation: CONFIG.CORRECTION_RECEIPT_LOCATION,
+      receiptTime: config.CORRECTION_RECEIPT_TIME,
+      receiptLocation: config.CORRECTION_RECEIPT_LOCATION,
       showScanInfo: true
     }
   );
@@ -414,6 +426,7 @@ function showCorrectionPage_(row) {
 
 function showCorrectionInProgressPage_(row) {
 
+  const config = getConfig_();
   const correction = getStoredCorrection_(row);
 
   return renderConfirmationPage_(
@@ -423,8 +436,8 @@ function showCorrectionInProgressPage_(row) {
     "warning",
     {
       correction: correction,
-      receiptTime: CONFIG.CORRECTION_RECEIPT_TIME,
-      receiptLocation: CONFIG.CORRECTION_RECEIPT_LOCATION
+      receiptTime: config.CORRECTION_RECEIPT_TIME,
+      receiptLocation: config.CORRECTION_RECEIPT_LOCATION
     }
   );
 }
@@ -646,7 +659,8 @@ function getScanPageInfo_(data, map) {
 
 function findOfficialScanPdf_() {
 
-  const folderId = String(CONFIG.SCAN_FOLDER_ID || "").trim();
+  const config = getConfig_();
+  const folderId = String(config.SCAN_FOLDER_ID).trim();
 
   if (folderId === "") {
     return { status: "missing", url: "" };
@@ -696,6 +710,7 @@ function submitCorrection(token, note) {
 
 function submitCorrection_(token, note) {
 
+  const config = getConfig_();
   const normalizedNote = String(note || "").trim();
 
   if (normalizedNote === "") {
@@ -776,8 +791,8 @@ function submitCorrection_(token, note) {
     return {
       content: normalizedNote,
       submittedAt: formatConfirmationTime_(submittedAt),
-      receiptTime: CONFIG.CORRECTION_RECEIPT_TIME,
-      receiptLocation: CONFIG.CORRECTION_RECEIPT_LOCATION
+      receiptTime: config.CORRECTION_RECEIPT_TIME,
+      receiptLocation: config.CORRECTION_RECEIPT_LOCATION
     };
   } finally {
     lock.releaseLock();

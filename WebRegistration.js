@@ -29,6 +29,8 @@ function openWebRegistrationDialog(){
  *****************************************************/
 function getPendingWebRegistration(){
 
+  const config = getConfig_();
+
   const sheet =
     SpreadsheetApp
       .getActiveSpreadsheet()
@@ -52,7 +54,7 @@ function getPendingWebRegistration(){
 
   const scanFolder =
 DriveApp.getFolderById(
-CONFIG.SCAN_FOLDER_ID
+config.SCAN_FOLDER_ID
 );
   
   const list=[];
@@ -86,7 +88,7 @@ CONFIG.SCAN_FOLDER_ID
 
     const scanPdf =
       "https://drive.google.com/file/d/" +
-      CONFIG.SCAN_PDF_FILE_ID +
+      config.SCAN_PDF_FILE_ID +
       "/view";
 
     list.push({

@@ -1,50 +1,156 @@
 /******************** CẤU HÌNH ********************/
 
-const CONFIG = {
+const CONFIG_SHEET_NAME = "Config";
+const CONFIG_CACHE_SECONDS = 300;
+const CONFIG_CACHE_KEY = "PHUC_KHAO_CONFIG";
 
-  // ID Google Docs Template
-  TEMPLATE_ID: "1sinZn21A66JNrcCaj7ofoWno9nmiC6pcFWWXvpkM0Po",
+const REQUIRED_CONFIG_KEYS = [
+  "TEMPLATE_ID",
+  "FORM_ID",
+  "PDF_FOLDER_ID",
+  "DATA1",
+  "DATA2",
+  "ADMIN_EMAIL",
+  "SCHOOL_YEAR",
+  "APPLICATION_SUBMISSION_PERIOD",
+  "APPLICATION_RECEIPT_DEADLINE",
+  "CONTACT_PHONE",
+  "RESULT_FOLDER_ID",
+  "SCAN_FOLDER_ID",
+  "SCAN_PDF_FILE_ID",
+  "CONFIRM_WEB_APP_URL",
+  "CORRECTION_RECEIPT_TIME",
+  "CORRECTION_RECEIPT_LOCATION",
+  "CONFIRM_RESPONSE_DEADLINE",
+  "SCHOOL_NAME",
+  "SCHOOL_SHORT_NAME",
+  "CONTACT_EMAIL",
+  "CONTACT_FACEBOOK_NAME",
+  "CONTACT_FACEBOOK_URL",
+  "APPLICATION_FORM_URL"
+];
 
-  // ID Google Form
-FORM_ID: "1GOQ_t2t316Z2JuF3G5Y9nFr_w60eIeXbdaOYRcYaAOw",
+let runtimeConfigCache_ = null;
 
-  // ID thư mục lưu PDF
-  PDF_FOLDER_ID: "1bMgxBBoO2Rv6cDllimZyWnemwMIeE6iy",
+function getConfig_() {
+  if (runtimeConfigCache_) {
+    return runtimeConfigCache_;
+  }
 
-  // Sheet
-  DATA1: "Data1",
-  DATA2: "Data2",
+  const cache = CacheService.getScriptCache();
+  const cachedValue = cache.get(CONFIG_CACHE_KEY);
 
-  // Email quản trị
-  ADMIN_EMAIL: "ts10.thpthongai@gmail.com",
+  if (cachedValue) {
+    try {
+      const cachedConfig = JSON.parse(cachedValue);
+      validateConfigValues_(cachedConfig);
+      runtimeConfigCache_ = cachedConfig;
+      return runtimeConfigCache_;
+    } catch (error) {
+      cache.remove(CONFIG_CACHE_KEY);
+    }
+  }
 
-  // Nội dung thay đổi theo năm học
-  SCHOOL_YEAR: "năm học 2027–2028",
-  APPLICATION_SUBMISSION_PERIOD:
-    "Từ 08h00 ngày 07/07/2027 đến 11h00 ngày 09/07/2027",
-  APPLICATION_RECEIPT_DEADLINE:
-    "Trước 11:00, Thứ Sáu, ngày 09/07/2027",
-  CONTACT_PHONE: "0396656826 hoặc 0348479256",
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName(CONFIG_SHEET_NAME);
 
-  // ID thư mục lưu công văn kết quả phúc khảo
-  RESULT_FOLDER_ID: "1pebzTZmQVuQfvhwUt9XprfNKYiH3ikI9",
+  if (!sheet) {
+    throw new Error('Không tìm thấy sheet "Config".');
+  }
 
-    // ID thư mục lưu file scan đơn giấy
-  SCAN_FOLDER_ID: "1yumyUlFtcsALzHb690psyP9WHW1lf7DJ",
+  const lastRow = Math.max(sheet.getLastRow(), 1);
+  const values = sheet
+    .getRange(1, 1, lastRow, 2)
+    .getDisplayValues();
 
-      // ID file scan
-  SCAN_PDF_FILE_ID: "1D-xaKEOzz6KOtCImKY1V6vUFqWWZoZQk",
+  if (
+    values[0][0] !== "Key" ||
+    values[0][1] !== "Value"
+  ) {
+    throw new Error(
+      'Sheet "Config" phải có hai cột tiêu đề "Key" và "Value".'
+    );
+  }
 
-  // URL Web App xác nhận nguyện vọng phúc khảo
-  CONFIRM_WEB_APP_URL:
-    "https://script.google.com/macros/s/AKfycbxcQYH4SKvmv0swkPku4HW6tcI1wc6IH6dOkKA2E3KC66x85utGTmXXYXfC6aIgYQ-Q/exec",
+  const config = {};
 
-  // Thời gian và địa điểm tiếp nhận yêu cầu đính chính
-  CORRECTION_RECEIPT_TIME: "Từ 14h30 đến 16h, thứ Sáu, ngày 09/07/2027",
-  CORRECTION_RECEIPT_LOCATION: "Phòng họp số 1, nhà điều hành, trường THPT Hòn Gai",
+  for (let index = 1; index < values.length; index++) {
+    const rowNumber = index + 1;
+    const key = String(values[index][0]).trim();
+    const value = String(values[index][1]).trim();
 
-  // Thời hạn phản hồi email xác nhận nguyện vọng phúc khảo
-  CONFIRM_RESPONSE_DEADLINE:
-  "14h00, ngày 09/07/2027"
+    if (key === "" && value === "") {
+      continue;
+    }
 
-};
+    if (key === "") {
+      throw new Error(
+        "Hàng " +
+        rowNumber +
+        " trong sheet Config có Value nhưng không có Key."
+      );
+    }
+
+    if (value === "") {
+      throw new Error(
+        'Cấu hình "' + key + '" đang để trống.'
+      );
+    }
+
+    if (Object.prototype.hasOwnProperty.call(config, key)) {
+      throw new Error(
+        'Key "' +
+        key +
+        '" xuất hiện nhiều hơn một lần trong sheet Config.'
+      );
+    }
+
+    config[key] = value;
+  }
+
+  validateConfigValues_(config);
+
+  cache.put(
+    CONFIG_CACHE_KEY,
+    JSON.stringify(config),
+    CONFIG_CACHE_SECONDS
+  );
+
+  runtimeConfigCache_ = config;
+  return runtimeConfigCache_;
+}
+
+function validateConfigValues_(config) {
+  if (
+    !config ||
+    typeof config !== "object" ||
+    Array.isArray(config)
+  ) {
+    throw new Error("Dữ liệu cấu hình không hợp lệ.");
+  }
+
+  REQUIRED_CONFIG_KEYS.forEach(function(key) {
+    if (!Object.prototype.hasOwnProperty.call(config, key)) {
+      throw new Error(
+        'Thiếu cấu hình "' + key + '" trong sheet Config.'
+      );
+    }
+
+    if (
+      typeof config[key] !== "string" ||
+      config[key].trim() === ""
+    ) {
+      throw new Error(
+        'Cấu hình "' + key + '" đang để trống.'
+      );
+    }
+  });
+}
+
+function clearConfigCache_() {
+  runtimeConfigCache_ = null;
+  CacheService
+    .getScriptCache()
+    .remove(CONFIG_CACHE_KEY);
+}
