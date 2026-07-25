@@ -3576,6 +3576,9 @@ const cancelCol =
       values[targetIndex][sbdCol]
     ).trim();
 
+  const replacedRanges = [];
+  let shouldAcceptTarget = false;
+
   values.forEach(function(row,index){
 
   if(
@@ -3596,28 +3599,44 @@ const cancelCol =
 
   if(sheetRow==targetRow){
 
-    sheet
-      .getRange(
-        sheetRow,
-        headerMap["Đã nộp đơn giấy"]
-      )
-      .setValue("Đã nộp");
+    row[paperCol] = "Đã nộp";
+    shouldAcceptTarget = true;
 
   }
   else{
 
-    sheet
-      .getRange(
+    row[paperCol] = "Đã thay thế";
+    replacedRanges.push(
+      sheet.getRange(
         sheetRow,
         headerMap["Đã nộp đơn giấy"]
-      )
-      .setValue("Đã thay thế");
+      ).getA1Notation()
+    );
 
   }
 
 });
 
-rebuildAcceptedList();
+  if(replacedRanges.length){
+
+    sheet
+      .getRangeList(replacedRanges)
+      .setValue("Đã thay thế");
+
+  }
+
+  if(shouldAcceptTarget){
+
+    sheet
+      .getRange(
+        targetRow,
+        headerMap["Đã nộp đơn giấy"]
+      )
+      .setValue("Đã nộp");
+
+  }
+
+rebuildAcceptedList(values, headerMap);
     return {
 
     success: true,
@@ -3682,7 +3701,7 @@ function showAcceptSuccess(){
  * Đồng bộ Data3
  * Danh sách thí sinh đã nộp đơn giấy
  *****************************************************/
-function rebuildAcceptedList() {
+function rebuildAcceptedList(sourceValues, sourceMap) {
 
   const config = getConfig_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -3690,23 +3709,35 @@ function rebuildAcceptedList() {
   const source = ss.getSheetByName(config.DATA1);
   const target = ss.getSheetByName("Data3");
 
-  const sourceMap = getColumnMap_(source);
+  sourceMap = sourceMap || getColumnMap_(source);
   const targetMap = getColumnMap_(target);
 
-  const sourceValues = source.getRange(
-    2,
-    1,
-    source.getLastRow()-1,
-    source.getLastColumn()
-  ).getValues();
+  if(!sourceValues){
+
+    const sourceLastRow = source.getLastRow();
+
+    sourceValues =
+      sourceLastRow>1
+      ? source.getRange(
+          2,
+          1,
+          sourceLastRow-1,
+          source.getLastColumn()
+        ).getValues()
+      : [];
+
+  }
+
+  const targetLastRow = target.getLastRow();
+  const targetLastColumn = target.getLastColumn();
 
   const targetValues =
-    target.getLastRow()>1
+    targetLastRow>1
     ? target.getRange(
         2,
         1,
-        target.getLastRow()-1,
-        target.getLastColumn()
+        targetLastRow-1,
+        targetLastColumn
       ).getValues()
     : [];
 
@@ -3715,6 +3746,19 @@ function rebuildAcceptedList() {
 
   const maDonTarget =
     targetMap["Mã đơn"]-1;
+
+  const noteTarget =
+    targetMap["Ghi chú"]-1;
+
+  const targetNotes =
+    targetValues.length
+    ? target.getRange(
+        2,
+        noteTarget+1,
+        targetValues.length,
+        1
+      ).getNotes()
+    : [];
 
   const paperCol =
     sourceMap["Đã nộp đơn giấy"]-1;
@@ -3751,6 +3795,8 @@ function rebuildAcceptedList() {
   //--------------------------------------------------
 
   const result = [];
+  const targetMapByMaDon = new Map();
+  const targetNoteByMaDon = new Map();
   const data3AdminColumns = [
     "Đăng ký phúc khảo trên web TSĐC",
     "Thông báo kết quả phúc khảo",
@@ -3762,23 +3808,34 @@ function rebuildAcceptedList() {
     "Số trang PDF trong file scan đơn giấy"
   ];
 
+  targetValues.forEach(function(row,index){
+
+    const maDon =
+      String(row[maDonTarget]).trim();
+
+    if(!targetMapByMaDon.has(maDon)){
+      targetMapByMaDon.set(maDon, row);
+      targetNoteByMaDon.set(
+        maDon,
+        targetNotes[index][0] || ""
+      );
+    }
+
+  });
+
   Object.keys(sourceMapByMaDon).forEach(function(maDon){
 
     const sourceRow =
       sourceMapByMaDon[maDon];
 
     const old =
-      targetValues.find(function(r){
-
-        return String(r[maDonTarget]).trim()==maDon;
-
-      });
+      targetMapByMaDon.get(maDon);
 
     if(old){
 
       const newRow = sourceRow.slice();
 
-      while(newRow.length < target.getLastColumn()){
+      while(newRow.length < targetLastColumn){
         newRow.push("");
       }
 
@@ -3797,7 +3854,7 @@ function rebuildAcceptedList() {
 
       const newRow = sourceRow.slice();
 
-      while(newRow.length < target.getLastColumn()){
+      while(newRow.length < targetLastColumn){
         newRow.push("");
       }
 
@@ -3842,23 +3899,6 @@ function rebuildAcceptedList() {
   });
 
 
-// Xóa nội dung cũ
-const rowsToClear = Math.max(
-  target.getLastRow() - 1,
-  result.length
-);
-
-if (rowsToClear > 0) {
-
-  target.getRange(
-    2,
-    1,
-    rowsToClear,
-    target.getLastColumn()
-  ).clearContent();
-
-}
-
 if(result.length){
 
   target.getRange(
@@ -3867,6 +3907,45 @@ if(result.length){
     result.length,
     result[0].length
   ).setValues(result);
+
+  const resultNotes = result.map(function(row){
+
+    const maDon =
+      String(row[maDonTarget]).trim();
+
+    return [
+      targetNoteByMaDon.get(maDon) || ""
+    ];
+
+  });
+
+  target.getRange(
+    2,
+    noteTarget+1,
+    resultNotes.length,
+    1
+  ).setNotes(resultNotes);
+
+}
+
+const surplusRowCount =
+  targetValues.length-result.length;
+
+if(surplusRowCount>0){
+
+  target.getRange(
+    result.length+2,
+    1,
+    surplusRowCount,
+    targetLastColumn
+  ).clearContent();
+
+  target.getRange(
+    result.length+2,
+    noteTarget+1,
+    surplusRowCount,
+    1
+  ).clearNote();
 
 }
 
