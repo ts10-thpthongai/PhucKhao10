@@ -19,12 +19,12 @@ FORM_ID: "1GOQ_t2t316Z2JuF3G5Y9nFr_w60eIeXbdaOYRcYaAOw",
   ADMIN_EMAIL: "ts10.thpthongai@gmail.com",
 
   // Nội dung thay đổi theo năm học
-  SCHOOL_YEAR: "năm học 2026–2027",
+  SCHOOL_YEAR: "năm học 2027–2028",
   APPLICATION_SUBMISSION_PERIOD:
-    "Từ 09h00 ngày 07/07/2026 đến 11h00 ngày 09/07/2026",
+    "Từ 08h00 ngày 07/07/2027 đến 11h00 ngày 09/07/2027",
   APPLICATION_RECEIPT_DEADLINE:
-    "Trước 11:00, Thứ Năm, ngày 09/07/2026",
-  CONTACT_PHONE: "0396656826",
+    "Trước 11:00, Thứ Sáu, ngày 09/07/2027",
+  CONTACT_PHONE: "0396656826 hoặc 0348479256",
 
   // ID thư mục lưu công văn kết quả phúc khảo
   RESULT_FOLDER_ID: "1pebzTZmQVuQfvhwUt9XprfNKYiH3ikI9",
@@ -40,11 +40,11 @@ FORM_ID: "1GOQ_t2t316Z2JuF3G5Y9nFr_w60eIeXbdaOYRcYaAOw",
     "https://script.google.com/macros/s/AKfycbxcQYH4SKvmv0swkPku4HW6tcI1wc6IH6dOkKA2E3KC66x85utGTmXXYXfC6aIgYQ-Q/exec",
 
   // Thời gian và địa điểm tiếp nhận yêu cầu đính chính
-  CORRECTION_RECEIPT_TIME: "14:00, thứ Sáu, ngày 11/07/2026",
-  CORRECTION_RECEIPT_LOCATION: "Phòng Văn thư, trường THPT Hòn Gai",
+  CORRECTION_RECEIPT_TIME: "Từ 14h30 đến 16h, thứ Sáu, ngày 09/07/2027",
+  CORRECTION_RECEIPT_LOCATION: "Phòng họp số 1, nhà điều hành, trường THPT Hòn Gai",
 
   // Thời hạn phản hồi email xác nhận nguyện vọng phúc khảo
   CONFIRM_RESPONSE_DEADLINE:
-  "13 giờ 30 phút, ngày 26/07/2026"
+  "14h00, ngày 09/07/2027"
 
 };
