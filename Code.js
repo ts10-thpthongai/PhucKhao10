@@ -4129,6 +4129,7 @@ const EVENT_LOG_SHEET_NAME = "NhatKySuKien";
 const EVENT_LOG_HEADERS = [
   "Thời gian",
   "CCCD",
+  "Họ tên",
   "Mã đơn liên quan",
   "Hành động",
   "Vai trò",
@@ -4171,16 +4172,29 @@ function getOrCreateEventLogSheet_() {
 
 function appendEventLog_(event, sheet) {
   const eventSheet = sheet || getOrCreateEventLogSheet_();
+  const targetRow = eventSheet.getLastRow() + 1;
+  const cccd = String(
+    event.cccd == null ? "" : event.cccd
+  ).trim();
+  const hoTen = String(
+    event.hoTen == null ? "" : event.hoTen
+  ).trim();
 
-  eventSheet.appendRow([
-    event.time || new Date(),
-    event.cccd,
-    (event.applicationIds || []).join(", "),
-    event.action,
-    event.role,
-    event.actor,
-    event.source
-  ]);
+  eventSheet
+    .getRange(targetRow, 2)
+    .setNumberFormat("@");
+  eventSheet
+    .getRange(targetRow, 1, 1, EVENT_LOG_HEADERS.length)
+    .setValues([[
+      event.time || new Date(),
+      cccd,
+      hoTen,
+      (event.applicationIds || []).join(", "),
+      event.action,
+      event.role,
+      event.actor,
+      event.source
+    ]]);
 }
 
 function cancelApplication(){
@@ -4297,7 +4311,10 @@ function cancelApplication(){
     return;
   }
 
-  const emailResult = sendCancelEmail_(cancellationResult.rows);
+  const emailResult = sendCancelEmail_(
+    cancellationResult.rows,
+    cancellationResult.cccd
+  );
   let completionMessage =
     "Đã hủy " +
     cancellationResult.processedCount +
@@ -4306,7 +4323,12 @@ function cancelApplication(){
   if (!emailResult.success) {
     completionMessage +=
       "\n\nTrạng thái hồ sơ và nhật ký đã được cập nhật, " +
-      "nhưng email thông báo không gửi được. Vui lòng kiểm tra lại.";
+      "nhưng email thông báo không gửi được. Vui lòng kiểm tra lại." +
+      (
+        emailResult.error
+          ? "\n\nChi tiết: " + emailResult.error
+          : ""
+      );
   }
 
   ui.alert(
@@ -4453,6 +4475,11 @@ function processCancellationByCitizenId_(cccd, audit, options) {
     }
 
     const eventSheet = getOrCreateEventLogSheet_();
+    const hoTen = String(
+      context.rows[0].data[context.nameCol] == null
+        ? ""
+        : context.rows[0].data[context.nameCol]
+    ).trim();
     const cancelRanges = [];
     const paperRanges = [];
     const applicationIds = [];
@@ -4494,6 +4521,7 @@ function processCancellationByCitizenId_(cccd, audit, options) {
       {
         time: new Date(),
         cccd: context.normalizedCccd,
+        hoTen: hoTen,
         applicationIds: applicationIds,
         action: auditData.action,
         role: auditData.role,
@@ -4525,33 +4553,89 @@ function processCancellationByCitizenId_(cccd, audit, options) {
 /*****************************************************
  * Gửi email xác nhận hủy
  *****************************************************/
-function sendCancelEmail_(rows){
+function findLatestValidCancelRecipientEmail_(rows, headerMap) {
+  const emailCol =
+    headerMap["Địa chỉ email để nhận đơn phúc khảo"]-1;
+  const timeCol =
+    headerMap["Dấu thời gian"]-1;
+
+  if (emailCol < 0 || timeCol < 0) {
+    throw new Error(
+      "Data1 thiếu cột email hoặc Dấu thời gian."
+    );
+  }
+
+  const sortedRows = rows.slice().sort(function(a, b) {
+    const timeA = new Date(a.data[timeCol]).getTime();
+    const timeB = new Date(b.data[timeCol]).getTime();
+    const validTimeA = Number.isFinite(timeA);
+    const validTimeB = Number.isFinite(timeB);
+
+    if (validTimeA && validTimeB && timeA !== timeB) {
+      return timeB - timeA;
+    }
+
+    if (validTimeA !== validTimeB) {
+      return validTimeA ? -1 : 1;
+    }
+
+    return b.sheetRow - a.sheetRow;
+  });
+
+  for (let index = 0; index < sortedRows.length; index++) {
+    const email = String(
+      sortedRows[index].data[emailCol] || ""
+    ).trim();
+
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return email;
+    }
+  }
+
+  return "";
+}
+
+function sendCancelEmail_(rows, cccd){
 
   const config = getConfig_();
-  const email=
-    rows[0].data[
-      getColumnMap_(
-        SpreadsheetApp
-          .getActiveSpreadsheet()
-          .getSheetByName(config.DATA1)
-      )["Địa chỉ email để nhận đơn phúc khảo"]-1
-    ];
+  const data1 =
+    SpreadsheetApp
+      .getActiveSpreadsheet()
+      .getSheetByName(config.DATA1);
+  const headerMap =
+    getColumnMap_(data1);
+  let email = "";
+
+  try {
+    email = findLatestValidCancelRecipientEmail_(
+      rows,
+      headerMap
+    );
+  } catch (error) {
+    Logger.log(error);
+    return {
+      success: false,
+      error: String(error.message || error)
+    };
+  }
+
+  if (email === "") {
+    const errorMessage =
+      "Không tìm thấy địa chỉ email hợp lệ trong các bản ghi cùng CCCD.";
+    Logger.log(errorMessage);
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
 
   const hoTen=
     rows[0].data[
-      getColumnMap_(
-        SpreadsheetApp
-          .getActiveSpreadsheet()
-          .getSheetByName(config.DATA1)
-      )["Họ tên"]-1
+      headerMap["Họ tên"]-1
     ];
 
   const maDonCol=
-    getColumnMap_(
-      SpreadsheetApp
-        .getActiveSpreadsheet()
-        .getSheetByName(config.DATA1)
-    )["Mã đơn"]-1;
+    headerMap["Mã đơn"]-1;
 
   let ds="";
 
@@ -4703,7 +4787,8 @@ ${config.SCHOOL_NAME}
       subject:
       "[" +
       config.SCHOOL_SHORT_NAME +
-      "] Xác nhận đã hủy đăng ký phúc khảo",
+      "] Hủy đăng ký phúc khảo - căn cước " +
+      String(cccd == null ? "" : cccd).trim(),
 
       htmlBody:html
 
