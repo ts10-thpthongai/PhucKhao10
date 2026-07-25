@@ -136,7 +136,9 @@
       <table>
         <tr><td>Họ tên</td><td><?= page.application.fullName ?></td></tr>
         <tr><td>Số báo danh</td><td><?= page.application.sbd ?></td></tr>
-        <tr><td>Mã đơn</td><td><?= page.application.maDon ?></td></tr>
+        <? if (!page.showWithdrawForm) { ?>
+          <tr><td>Mã đơn</td><td><?= page.application.maDon ?></td></tr>
+        <? } ?>
         <tr><td>Môn phúc khảo</td><td><?= page.application.mon ?></td></tr>
         <? if (confirmTime) { ?>
           <tr><td>Thời gian phản hồi</td><td><?= confirmTime ?></td></tr>
