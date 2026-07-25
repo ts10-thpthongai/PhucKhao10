@@ -64,7 +64,13 @@
       cursor: pointer;
     }
 
-    #formError {
+    .withdraw-button {
+      background: #d93025;
+    }
+
+    #formError,
+    #confirmationError,
+    #withdrawError {
       color: #d93025;
       margin-top: 10px;
     }
@@ -156,6 +162,28 @@
       </div>
     <? } ?>
 
+    <? if (page.showConfirmationForm) { ?>
+      <section id="confirmationForm">
+        <button type="button" id="submitConfirmation">
+          XÁC NHẬN NGUYỆN VỌNG PHÚC KHẢO
+        </button>
+        <p id="confirmationError" role="alert"></p>
+      </section>
+    <? } ?>
+
+    <? if (page.showWithdrawForm) { ?>
+      <section id="withdrawForm">
+        <p><strong>Cảnh báo:</strong> Thao tác này sẽ rút toàn bộ đơn phúc khảo hiện tại cùng CCCD và không nên thực hiện nhầm.</p>
+        <button
+          type="button"
+          class="withdraw-button"
+          id="submitWithdrawal">
+          XÁC NHẬN RÚT TOÀN BỘ ĐƠN
+        </button>
+        <p id="withdrawError" role="alert"></p>
+      </section>
+    <? } ?>
+
     <? if (page.correction) { ?>
       <h2>Nội dung đã tiếp nhận</h2>
       <p class="correction-content"><?= page.correction.content ?></p>
@@ -231,6 +259,93 @@
         receiptSection.appendChild(receiptLocation);
         document.querySelector(".card").appendChild(receiptSection);
       }
+    </script>
+  <? } ?>
+
+  <? if (page.showConfirmationForm) { ?>
+    <script>
+      document.getElementById("submitConfirmation").addEventListener(
+        "click",
+        function() {
+          const submitButton = this;
+          const errorElement =
+            document.getElementById("confirmationError");
+          const token = <?!= confirmationTokenJson ?>;
+
+          submitButton.disabled = true;
+          submitButton.textContent = "Đang xác nhận...";
+          errorElement.textContent = "";
+
+          google.script.run
+            .withSuccessHandler(function(receipt) {
+              const form =
+                document.getElementById("confirmationForm");
+              form.innerHTML = "";
+
+              const heading = document.createElement("h2");
+              const message = document.createElement("p");
+
+              heading.textContent = "Xác nhận thành công";
+              message.textContent = receipt.message;
+              form.appendChild(heading);
+              form.appendChild(message);
+            })
+            .withFailureHandler(function(error) {
+              submitButton.disabled = false;
+              submitButton.textContent =
+                "XÁC NHẬN NGUYỆN VỌNG PHÚC KHẢO";
+              errorElement.textContent = error.message ||
+                "Không thể xác nhận nguyện vọng.";
+            })
+            .submitConfirmation(token);
+        }
+      );
+    </script>
+  <? } ?>
+
+  <? if (page.showWithdrawForm) { ?>
+    <script>
+      document.getElementById("submitWithdrawal").addEventListener(
+        "click",
+        function() {
+          const submitButton = this;
+          const errorElement =
+            document.getElementById("withdrawError");
+          const token = <?!= withdrawTokenJson ?>;
+
+          submitButton.disabled = true;
+          submitButton.textContent = "Đang xử lý...";
+          errorElement.textContent = "";
+
+          google.script.run
+            .withSuccessHandler(function(receipt) {
+              const form = document.getElementById("withdrawForm");
+              form.innerHTML = "";
+
+              const heading = document.createElement("h2");
+              const message = document.createElement("p");
+              const applications = document.createElement("p");
+
+              heading.textContent = "Rút đơn phúc khảo thành công";
+              message.textContent = receipt.message;
+              applications.textContent =
+                "Các mã đơn đã rút: " +
+                receipt.applicationIds.join(", ");
+
+              form.appendChild(heading);
+              form.appendChild(message);
+              form.appendChild(applications);
+            })
+            .withFailureHandler(function(error) {
+              submitButton.disabled = false;
+              submitButton.textContent =
+                "XÁC NHẬN RÚT TOÀN BỘ ĐƠN";
+              errorElement.textContent = error.message ||
+                "Không thể xử lý yêu cầu rút đơn.";
+            })
+            .submitWithdrawal(token);
+        }
+      );
     </script>
   <? } ?>
 </body>

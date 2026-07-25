@@ -3,6 +3,7 @@
 const CONFIG_SHEET_NAME = "Config";
 const CONFIG_CACHE_SECONDS = 300;
 const CONFIG_CACHE_KEY = "PHUC_KHAO_CONFIG";
+const LOCK_BUTTON_TIME_ZONE = "Asia/Ho_Chi_Minh";
 
 const REQUIRED_CONFIG_KEYS = [
   "TEMPLATE_ID",
@@ -22,6 +23,7 @@ const REQUIRED_CONFIG_KEYS = [
   "CORRECTION_RECEIPT_TIME",
   "CORRECTION_RECEIPT_LOCATION",
   "CONFIRM_RESPONSE_DEADLINE",
+  "LOCK_BUTTON_DEADLINE",
   "SCHOOL_NAME",
   "SCHOOL_SHORT_NAME",
   "CONTACT_EMAIL",
@@ -153,4 +155,74 @@ function clearConfigCache_() {
   CacheService
     .getScriptCache()
     .remove(CONFIG_CACHE_KEY);
+}
+
+function getFreshConfigValue_(key) {
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName(CONFIG_SHEET_NAME);
+
+  if (!sheet) {
+    throw new Error('Không tìm thấy sheet "Config".');
+  }
+
+  const lastRow = Math.max(sheet.getLastRow(), 1);
+  const values = sheet
+    .getRange(1, 1, lastRow, 2)
+    .getDisplayValues();
+
+  for (let index = 1; index < values.length; index++) {
+    if (String(values[index][0]).trim() === key) {
+      const value = String(values[index][1]).trim();
+
+      if (value === "") {
+        throw new Error('Cấu hình "' + key + '" đang để trống.');
+      }
+
+      return value;
+    }
+  }
+
+  throw new Error('Thiếu cấu hình "' + key + '" trong sheet Config.');
+}
+
+function parseLockButtonDeadline_(value) {
+  const canonical = String(value || "").trim();
+
+  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(canonical)) {
+    throw new Error(
+      'LOCK_BUTTON_DEADLINE phải có dạng "yyyy-MM-dd HH:mm".'
+    );
+  }
+
+  const deadline = Utilities.parseDate(
+    canonical,
+    LOCK_BUTTON_TIME_ZONE,
+    "yyyy-MM-dd HH:mm"
+  );
+
+  if (
+    Utilities.formatDate(
+      deadline,
+      LOCK_BUTTON_TIME_ZONE,
+      "yyyy-MM-dd HH:mm"
+    ) !== canonical
+  ) {
+    throw new Error("LOCK_BUTTON_DEADLINE không phải thời điểm hợp lệ.");
+  }
+
+  return deadline;
+}
+
+function getLockButtonDeadlineInfo_(fresh) {
+  const configValue = fresh
+    ? getFreshConfigValue_("LOCK_BUTTON_DEADLINE")
+    : String(getConfig_().LOCK_BUTTON_DEADLINE).trim();
+  const deadline = parseLockButtonDeadline_(configValue);
+
+  return {
+    configValue: configValue,
+    deadline: deadline,
+    isExpired: new Date().getTime() > deadline.getTime()
+  };
 }

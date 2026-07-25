@@ -2526,6 +2526,34 @@ function requireAdmin_() {
 
 }
 
+function getCurrentInternalUser_() {
+  const email = getCurrentUserEmail_();
+
+  if (email === "") {
+    throw new Error(
+      "Không xác định được email tài khoản đang thao tác."
+    );
+  }
+
+  return {
+    email: email,
+    role: isCurrentUserAdmin_() ? "Quản trị" : "Trợ lý"
+  };
+}
+
+function requireInternalUser_() {
+  try {
+    return getCurrentInternalUser_();
+  } catch (error) {
+    SpreadsheetApp.getUi().alert(
+      "Không thể thực hiện",
+      String(error.message || error),
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    return null;
+  }
+}
+
 function onOpen() {
 
   const ui = SpreadsheetApp.getUi();
@@ -4097,9 +4125,72 @@ function showPdfLookupDialog_(cccd){
 /*****************************************************
  * HỦY ĐƠN PHÚC KHẢO
  *****************************************************/
+const EVENT_LOG_SHEET_NAME = "NhatKySuKien";
+const EVENT_LOG_HEADERS = [
+  "Thời gian",
+  "CCCD",
+  "Mã đơn liên quan",
+  "Hành động",
+  "Vai trò",
+  "Người thực hiện",
+  "Nguồn thao tác"
+];
+
+function getOrCreateEventLogSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(EVENT_LOG_SHEET_NAME);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(EVENT_LOG_SHEET_NAME);
+    sheet
+      .getRange(1, 1, 1, EVENT_LOG_HEADERS.length)
+      .setValues([EVENT_LOG_HEADERS]);
+    sheet.setFrozenRows(1);
+    return sheet;
+  }
+
+  const existingHeaders = sheet
+    .getRange(1, 1, 1, EVENT_LOG_HEADERS.length)
+    .getDisplayValues()[0];
+  const headersAreValid = EVENT_LOG_HEADERS.every(
+    function(header, index) {
+      return String(existingHeaders[index]).trim() === header;
+    }
+  );
+
+  if (!headersAreValid) {
+    throw new Error(
+      'Sheet "' +
+      EVENT_LOG_SHEET_NAME +
+      '" không có đúng cấu trúc tiêu đề.'
+    );
+  }
+
+  return sheet;
+}
+
+function appendEventLog_(event, sheet) {
+  const eventSheet = sheet || getOrCreateEventLogSheet_();
+
+  eventSheet.appendRow([
+    event.time || new Date(),
+    event.cccd,
+    (event.applicationIds || []).join(", "),
+    event.action,
+    event.role,
+    event.actor,
+    event.source
+  ]);
+}
+
 function cancelApplication(){
 
   const ui = SpreadsheetApp.getUi();
+  const internalUser = requireInternalUser_();
+
+  if (!internalUser) {
+    return;
+  }
 
   const response = ui.prompt(
     "Hủy đơn phúc khảo",
@@ -4118,73 +4209,22 @@ function cancelApplication(){
     return;
   }
 
-  cancelApplicationCore_(cccd);
+  let context;
 
-}
+  try {
+    context = getCancellationContext_(cccd);
+  } catch (error) {
+    ui.alert(
+      "Không thể hủy đơn",
+      String(error.message || error),
+      ui.ButtonSet.OK
+    );
+    return;
+  }
 
+  if(context.rows.length==0){
 
-/*****************************************************
- * Hủy đơn
- *****************************************************/
-function cancelApplicationCore_(cccd){
-
-  const config = getConfig_();
-  const sheet =
-    SpreadsheetApp
-      .getActiveSpreadsheet()
-      .getSheetByName(config.DATA1);
-
-  const map =
-    getColumnMap_(sheet);
-
-  const values =
-    sheet
-      .getRange(
-        2,
-        1,
-        sheet.getLastRow()-1,
-        sheet.getLastColumn()
-      )
-      .getValues();
-
-  const cccdCol =
-    map["Số căn cước (hoặc mã định danh cá nhân)"]-1;
-
-  const cancelCol =
-    map["Hủy phúc khảo"];
-
-  const emailCol =
-    map["Địa chỉ email để nhận đơn phúc khảo"]-1;
-
-  const hoTenCol =
-    map["Họ tên"]-1;
-
-  const sbdCol =
-    map["Số báo danh"]-1;
-
-  const maDonCol =
-    map["Mã đơn"]-1;
-
-  let rows=[];
-
-  values.forEach(function(row,index){
-
-    if(
-      String(row[cccdCol]).trim()==cccd
-    ){
-
-      rows.push({
-        sheetRow:index+2,
-        data:row
-      });
-
-    }
-
-  });
-
-  if(rows.length==0){
-
-    SpreadsheetApp.getUi().alert(
+    ui.alert(
       "Không tìm thấy số căn cước."
     );
 
@@ -4195,21 +4235,21 @@ function cancelApplicationCore_(cccd){
   let message="";
 
   message+="Họ tên: "
-    +rows[0].data[hoTenCol];
+    +context.rows[0].data[context.nameCol];
 
   message+="\n";
 
   message+="SBD: "
-    +rows[0].data[sbdCol];
+    +context.rows[0].data[context.sbdCol];
 
   message+="\n\n";
 
   message+="Các mã đơn:\n\n";
 
-  rows.forEach(function(r){
+  context.rows.forEach(function(r){
 
     message+=
-      r.data[maDonCol]
+      r.data[context.applicationIdCol]
       +"\n";
 
   });
@@ -4217,8 +4257,6 @@ function cancelApplicationCore_(cccd){
   message+="\n";
 
   message+="Bạn chắc chắn muốn hủy?";
-
-  const ui=SpreadsheetApp.getUi();
 
   const result=
     ui.alert(
@@ -4231,37 +4269,255 @@ function cancelApplicationCore_(cccd){
     return;
   }
 
-  rows.forEach(function(r){
+  let cancellationResult;
 
-  // Đánh dấu đã rút đơn
-  sheet
-    .getRange(
-      r.sheetRow,
-      cancelCol
-    )
-    .setValue("Đã rút đơn");
+  try {
+    cancellationResult = processCancellationByCitizenId_(
+      cccd,
+      {
+        action: "Huỷ đơn",
+        role: internalUser.role,
+        actor: internalUser.email,
+        source: "Menu Apps Script"
+      },
+      {
+        context: context
+      }
+    );
+  } catch (error) {
+    const errorMessage = String(error.message || error);
 
-  // Xóa trạng thái "Đã nộp đơn giấy"
-  sheet
-    .getRange(
-      r.sheetRow,
-      map["Đã nộp đơn giấy"]
-    )
-    .clearContent();
+    ui.alert(
+      errorMessage === "Hồ sơ đã được rút trước đó."
+        ? "Hồ sơ đã được rút trước đó"
+        : "Hủy đơn chưa hoàn tất đầy đủ",
+      errorMessage,
+      ui.ButtonSet.OK
+    );
+    return;
+  }
 
-});
+  const emailResult = sendCancelEmail_(cancellationResult.rows);
+  let completionMessage =
+    "Đã hủy " +
+    cancellationResult.processedCount +
+    " đơn.";
 
-  rebuildAcceptedList();
+  if (!emailResult.success) {
+    completionMessage +=
+      "\n\nTrạng thái hồ sơ và nhật ký đã được cập nhật, " +
+      "nhưng email thông báo không gửi được. Vui lòng kiểm tra lại.";
+  }
 
-  sendCancelEmail_(rows);
-
-  SpreadsheetApp.getUi().alert(
-    "Hoàn thành",
-    "Đã hủy "
-    +rows.length+
-    " đơn.",
-    SpreadsheetApp.getUi().ButtonSet.OK
+  ui.alert(
+    emailResult.success ? "Hoàn thành" : "Hoàn thành, lỗi gửi email",
+    completionMessage,
+    ui.ButtonSet.OK
   );
+
+}
+
+
+/*****************************************************
+ * Hủy đơn
+ *****************************************************/
+function getCancellationContext_(cccd){
+
+  const config = getConfig_();
+  const normalizedCccd = String(cccd || "").trim();
+
+  if (normalizedCccd === "") {
+    throw new Error("Số căn cước không được để trống.");
+  }
+
+  const sheet =
+    SpreadsheetApp
+      .getActiveSpreadsheet()
+      .getSheetByName(config.DATA1);
+
+  const map =
+    getColumnMap_(sheet);
+
+  const lastRow = sheet.getLastRow();
+
+  const values =
+    lastRow > 1
+    ? sheet
+      .getRange(
+        2,
+        1,
+        lastRow-1,
+        sheet.getLastColumn()
+      )
+      .getValues()
+    : [];
+
+  const cccdCol =
+    map["Số căn cước (hoặc mã định danh cá nhân)"]-1;
+
+  const cancelCol =
+    map["Hủy phúc khảo"];
+
+  const hoTenCol =
+    map["Họ tên"]-1;
+
+  const sbdCol =
+    map["Số báo danh"]-1;
+
+  const maDonCol =
+    map["Mã đơn"]-1;
+  const paperCol =
+    map["Đã nộp đơn giấy"];
+
+  if (
+    cccdCol < 0 ||
+    !cancelCol ||
+    !paperCol ||
+    maDonCol < 0
+  ) {
+    throw new Error("Data1 thiếu cột cần thiết để hủy/rút đơn.");
+  }
+
+  let rows=[];
+
+  values.forEach(function(row,index){
+
+    if(
+      String(row[cccdCol]).trim()==normalizedCccd
+    ){
+
+      rows.push({
+        sheetRow:index+2,
+        data:row
+      });
+
+    }
+
+  });
+
+  return {
+    normalizedCccd: normalizedCccd,
+    sheet: sheet,
+    headerMap: map,
+    values: values,
+    rows: rows,
+    cancelCol: cancelCol,
+    paperCol: paperCol,
+    nameCol: hoTenCol,
+    sbdCol: sbdCol,
+    applicationIdCol: maDonCol
+  };
+}
+
+function processCancellationByCitizenId_(cccd, audit, options) {
+  const settings = options || {};
+  const lock = settings.lockAlreadyHeld
+    ? null
+    : LockService.getDocumentLock();
+
+  if (lock) {
+    lock.waitLock(30000);
+  }
+
+  try {
+    const context = settings.context || getCancellationContext_(cccd);
+
+    if (
+      context.normalizedCccd !== String(cccd || "").trim() ||
+      context.rows.length === 0
+    ) {
+      throw new Error("Không tìm thấy hồ sơ theo số căn cước.");
+    }
+
+    const auditData = audit || {};
+
+    if (
+      !auditData.action ||
+      !auditData.role ||
+      !auditData.actor ||
+      !auditData.source
+    ) {
+      throw new Error("Thiếu thông tin lưu vết thao tác.");
+    }
+
+    const allRowsAlreadyWithdrawn = context.rows.every(
+      function(item) {
+        return String(
+          item.data[context.cancelCol - 1]
+        ).trim() === "Đã rút đơn";
+      }
+    );
+
+    if (allRowsAlreadyWithdrawn) {
+      throw new Error("Hồ sơ đã được rút trước đó.");
+    }
+
+    const eventSheet = getOrCreateEventLogSheet_();
+    const cancelRanges = [];
+    const paperRanges = [];
+    const applicationIds = [];
+
+    context.rows.forEach(function(item) {
+      const valueIndex = item.sheetRow - 2;
+
+      cancelRanges.push(
+        context.sheet
+          .getRange(item.sheetRow, context.cancelCol)
+          .getA1Notation()
+      );
+      paperRanges.push(
+        context.sheet
+          .getRange(item.sheetRow, context.paperCol)
+          .getA1Notation()
+      );
+      context.values[valueIndex][context.cancelCol - 1] =
+        "Đã rút đơn";
+      context.values[valueIndex][context.paperCol - 1] = "";
+      applicationIds.push(
+        String(item.data[context.applicationIdCol]).trim()
+      );
+    });
+
+    context.sheet
+      .getRangeList(cancelRanges)
+      .setValue("Đã rút đơn");
+    context.sheet
+      .getRangeList(paperRanges)
+      .clearContent();
+
+    rebuildAcceptedList(
+      context.values,
+      context.headerMap
+    );
+
+    appendEventLog_(
+      {
+        time: new Date(),
+        cccd: context.normalizedCccd,
+        applicationIds: applicationIds,
+        action: auditData.action,
+        role: auditData.role,
+        actor: auditData.actor,
+        source: auditData.source
+      },
+      eventSheet
+    );
+
+    return {
+      cccd: context.normalizedCccd,
+      processedCount: context.rows.length,
+      applicationIds: applicationIds,
+      action: auditData.action,
+      role: auditData.role,
+      actor: auditData.actor,
+      source: auditData.source,
+      rows: context.rows
+    };
+  } finally {
+    if (lock) {
+      lock.releaseLock();
+    }
+  }
 
 }
 
@@ -4453,11 +4709,19 @@ ${config.SCHOOL_NAME}
 
     });
 
+    return {
+      success: true
+    };
+
   }
 
   catch(err){
 
     Logger.log(err);
+    return {
+      success: false,
+      error: String(err.message || err)
+    };
 
   }
 
@@ -4677,7 +4941,56 @@ history.push({
 
   });
 
-  if(history.length==0){
+  const eventHistory = [];
+  const eventSheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName(EVENT_LOG_SHEET_NAME);
+
+  if (eventSheet && eventSheet.getLastRow() > 1) {
+    const eventMap = getColumnMap_(eventSheet);
+    const eventValues = eventSheet
+      .getRange(
+        2,
+        1,
+        eventSheet.getLastRow() - 1,
+        eventSheet.getLastColumn()
+      )
+      .getValues();
+    const eventCccdCol = eventMap["CCCD"] - 1;
+    const eventTimeCol = eventMap["Thời gian"] - 1;
+    const eventApplicationIdsCol =
+      eventMap["Mã đơn liên quan"] - 1;
+    const eventActionCol = eventMap["Hành động"] - 1;
+    const eventRoleCol = eventMap["Vai trò"] - 1;
+    const eventActorCol = eventMap["Người thực hiện"] - 1;
+    const eventSourceCol = eventMap["Nguồn thao tác"] - 1;
+
+    eventValues.forEach(function(row) {
+      if (String(row[eventCccdCol]).trim() !== cccd) {
+        return;
+      }
+
+      const eventTime = new Date(row[eventTimeCol]);
+
+      eventHistory.push({
+        time: eventTime,
+        text:
+          Utilities.formatDate(
+            eventTime,
+            LOCK_BUTTON_TIME_ZONE,
+            "dd/MM/yyyy HH:mm:ss"
+          ) +
+          "\nHành động: " + row[eventActionCol] +
+          "\nVai trò: " + row[eventRoleCol] +
+          "\nNgười thực hiện: " + row[eventActorCol] +
+          "\nNguồn thao tác: " + row[eventSourceCol] +
+          "\nMã đơn liên quan: " +
+          row[eventApplicationIdsCol]
+      });
+    });
+  }
+
+  if(history.length==0 && eventHistory.length==0){
 
     ui.alert(
 
@@ -4695,9 +5008,17 @@ history.push({
 
   });
 
-  let result="";
+  eventHistory.sort(function(a,b){
+    return a.time-b.time;
+  });
 
-  history.forEach(function(item,index){
+  let result="1. LỊCH SỬ GỬI BIỂU MẪU\n\n";
+
+  if (history.length === 0) {
+    result += "Không có dữ liệu.\n\n";
+  }
+
+  history.forEach(function(item){
 
     result +=
 
@@ -4711,6 +5032,19 @@ history.push({
 
       "\n\n";
 
+  });
+
+  result += "2. LỊCH SỬ THAO TÁC HUỶ/RÚT ĐƠN\n\n";
+
+  if (eventHistory.length === 0) {
+    result += "Chưa có sự kiện.\n";
+  }
+
+  eventHistory.forEach(function(item){
+    result +=
+      "====================\n" +
+      item.text +
+      "\n\n";
   });
 
   ui.alert(

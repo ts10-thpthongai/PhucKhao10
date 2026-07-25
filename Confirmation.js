@@ -97,6 +97,12 @@ const correctionUrl =
   encodeURIComponent(token) +
   "&action=correction";
 
+const withdrawUrl =
+  webAppUrl +
+  "?token=" +
+  encodeURIComponent(token) +
+  "&action=withdraw";
+
 return {
   fullName: data[map["Họ tên"] - 1],
   email:
@@ -116,7 +122,8 @@ return {
       map["Môn xin phúc khảo"] - 1
     ],
   confirmUrl: confirmUrl,
-  correctionUrl: correctionUrl
+  correctionUrl: correctionUrl,
+  withdrawUrl: withdrawUrl
 };
 }
 
@@ -157,9 +164,14 @@ function sendConfirmationEmail() {
       template.mon = emailData.mon;
       template.confirmUrl = emailData.confirmUrl;
       template.correctionUrl = emailData.correctionUrl;
+      template.withdrawUrl = emailData.withdrawUrl;
       template.responseDeadline = String(
         config.CONFIRM_RESPONSE_DEADLINE
       ).trim();
+      template.correctionReceiptTime =
+        config.CORRECTION_RECEIPT_TIME;
+      template.correctionReceiptLocation =
+        config.CORRECTION_RECEIPT_LOCATION;
       template.contactPhone = config.CONTACT_PHONE;
       template.schoolName = config.SCHOOL_NAME;
       template.contactEmail = config.CONTACT_EMAIL;
@@ -307,6 +319,15 @@ function openConfirmation(token, action) {
     return showInvalidTokenPage_();
   }
 
+  try {
+    if (getLockButtonDeadlineInfo_(true).isExpired) {
+      return showDeadlineEndedPage_(row);
+    }
+  } catch (error) {
+    Logger.log("Cấu hình thời hạn phản hồi không hợp lệ: " + error);
+    return showStudentConfigurationErrorPage_(row);
+  }
+
   const sheet = getConfirmationSheet_();
   const map = getConfirmationColumnMap_();
   const status = String(
@@ -315,6 +336,18 @@ function openConfirmation(token, action) {
       map["Xác nhận nguyện vọng phúc khảo"]
     ).getValue()
   ).trim();
+
+  if (action === "withdraw") {
+    if (
+      status === CONFIRM_STATUS.SENT ||
+      status === CONFIRM_STATUS.OK ||
+      status === CONFIRM_STATUS.CORRECTION
+    ) {
+      return showWithdrawConfirmationPage_(row, token);
+    }
+
+    return showInvalidTokenPage_();
+  }
 
   if (status === CONFIRM_STATUS.OK) {
     if (action === "correction") {
@@ -343,17 +376,7 @@ function openConfirmation(token, action) {
   }
 
   if (status === CONFIRM_STATUS.SENT) {
-    try {
-      if (confirmApplication_(token)) {
-        return showConfirmPage_(row);
-      }
-    } catch (error) {
-      Logger.log(
-        "Không thể xác nhận nguyện vọng: " + error
-      );
-    }
-
-    return showConfirmationErrorPage_();
+    return showConfirmationActionPage_(row, token);
   }
 
   return showInvalidTokenPage_();
@@ -370,6 +393,20 @@ function showConfirmPage_(row) {
   );
 }
 
+function showConfirmationActionPage_(row, token) {
+  return renderConfirmationPage_(
+    row,
+    "Xác nhận nguyện vọng phúc khảo",
+    "Vui lòng kiểm tra thông tin và nhấn nút xác nhận bên dưới.",
+    "info",
+    {
+      showConfirmationForm: true,
+      confirmationToken: token,
+      showScanInfo: true
+    }
+  );
+}
+
 function showExpiredPage_(row) {
 
   return renderConfirmationPage_(
@@ -377,6 +414,37 @@ function showExpiredPage_(row) {
     "Liên kết không hợp lệ",
     "Liên kết xác nhận không còn sử dụng được.",
     "error"
+  );
+}
+
+function showDeadlineEndedPage_(row) {
+  return renderConfirmationPage_(
+    row,
+    "Thời hạn phản hồi đã kết thúc",
+    "Nhà trường đã kết thúc tiếp nhận xác nhận, đính chính và rút đơn phúc khảo trực tuyến.",
+    "error"
+  );
+}
+
+function showStudentConfigurationErrorPage_(row) {
+  return renderConfirmationPage_(
+    row,
+    "Không thể xử lý yêu cầu",
+    "Hệ thống chưa thể kiểm tra thời hạn phản hồi. Vui lòng liên hệ Nhà trường để được hỗ trợ.",
+    "error"
+  );
+}
+
+function showWithdrawConfirmationPage_(row, token) {
+  return renderConfirmationPage_(
+    row,
+    "Xác nhận rút đơn phúc khảo",
+    "Bạn đang yêu cầu rút toàn bộ đơn phúc khảo. Toàn bộ các mã đơn hiện tại cùng CCCD sẽ không còn hiệu lực. Vui lòng kiểm tra kỹ trước khi xác nhận.",
+    "warning",
+    {
+      showWithdrawForm: true,
+      withdrawToken: token
+    }
   );
 }
 
@@ -488,6 +556,7 @@ function confirmApplication_(token) {
   lock.waitLock(30000);
 
   try {
+    assertStudentButtonDeadlineOpen_(true);
     const row = findConfirmationRowByToken_(token);
 
     if (!row) {
@@ -538,6 +607,21 @@ function confirmApplication_(token) {
   }
 }
 
+function submitConfirmation(token) {
+  const normalizedToken = String(token || "").trim();
+
+  if (!confirmApplication_(normalizedToken)) {
+    throw new Error(
+      "Hồ sơ đã được xử lý hoặc liên kết không còn khả dụng."
+    );
+  }
+
+  return {
+    success: true,
+    message: "Nguyện vọng phúc khảo của bạn đã được xác nhận."
+  };
+}
+
 function findConfirmationRowByToken_(token) {
 
   const sheet = getConfirmationSheet_();
@@ -574,18 +658,41 @@ function renderConfirmationPage_(row, title, message, status, options) {
     message: message,
     status: status,
     application: null,
+    showConfirmationForm:
+      Boolean(pageOptions.showConfirmationForm),
     showCorrectionForm: Boolean(pageOptions.showCorrectionForm),
+    showWithdrawForm: Boolean(pageOptions.showWithdrawForm),
     correction: pageOptions.correction || null,
     receiptTime: pageOptions.receiptTime || "",
     receiptLocation: pageOptions.receiptLocation || "",
     scan: null
   };
   template.confirmTime = "";
+  template.confirmationTokenJson = "null";
   template.correctionTokenJson = "null";
+  template.withdrawTokenJson = "null";
+
+  if (pageOptions.showConfirmationForm) {
+    template.confirmationTokenJson = JSON.stringify(
+      pageOptions.confirmationToken || ""
+    )
+      .replace(/</g, "\\u003c")
+      .replace(/>/g, "\\u003e")
+      .replace(/&/g, "\\u0026");
+  }
 
   if (pageOptions.showCorrectionForm) {
     template.correctionTokenJson = JSON.stringify(
       pageOptions.correctionToken || ""
+    )
+      .replace(/</g, "\\u003c")
+      .replace(/>/g, "\\u003e")
+      .replace(/&/g, "\\u0026");
+  }
+
+  if (pageOptions.showWithdrawForm) {
+    template.withdrawTokenJson = JSON.stringify(
+      pageOptions.withdrawToken || ""
     )
       .replace(/</g, "\\u003c")
       .replace(/>/g, "\\u003e")
@@ -722,6 +829,7 @@ function submitCorrection_(token, note) {
   lock.waitLock(30000);
 
   try {
+    assertStudentButtonDeadlineOpen_(true);
     const row = findConfirmationRowByToken_(token);
 
     if (!row) {
@@ -793,6 +901,95 @@ function submitCorrection_(token, note) {
       submittedAt: formatConfirmationTime_(submittedAt),
       receiptTime: config.CORRECTION_RECEIPT_TIME,
       receiptLocation: config.CORRECTION_RECEIPT_LOCATION
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function assertStudentButtonDeadlineOpen_(fresh) {
+  let deadlineInfo;
+
+  try {
+    deadlineInfo = getLockButtonDeadlineInfo_(Boolean(fresh));
+  } catch (error) {
+    Logger.log("Cấu hình thời hạn phản hồi không hợp lệ: " + error);
+    throw new Error(
+      "Hệ thống chưa thể kiểm tra thời hạn phản hồi. Vui lòng liên hệ Nhà trường."
+    );
+  }
+
+  if (deadlineInfo.isExpired) {
+    throw new Error("Thời hạn phản hồi đã kết thúc.");
+  }
+
+  return deadlineInfo;
+}
+
+function submitWithdrawal(token) {
+  const normalizedToken = String(token || "").trim();
+  const lock = LockService.getDocumentLock();
+
+  lock.waitLock(30000);
+
+  try {
+    assertStudentButtonDeadlineOpen_(true);
+
+    const row = findConfirmationRowByToken_(normalizedToken);
+
+    if (!row) {
+      throw new Error(
+        "Liên kết không hợp lệ hoặc hồ sơ không còn khả dụng."
+      );
+    }
+
+    const sheet = getConfirmationSheet_();
+    const map = getConfirmationColumnMap_();
+    const cccdCol =
+      map["Số căn cước (hoặc mã định danh cá nhân)"];
+    const statusCol = map["Xác nhận nguyện vọng phúc khảo"];
+
+    if (!cccdCol || !statusCol) {
+      throw new Error("Hệ thống chưa thể xử lý yêu cầu rút đơn.");
+    }
+
+    const data = sheet
+      .getRange(row, 1, 1, sheet.getLastColumn())
+      .getValues()[0];
+    const cccd = String(data[cccdCol - 1]).trim();
+    const status = String(data[statusCol - 1]).trim();
+
+    if (
+      cccd === "" ||
+      (
+        status !== CONFIRM_STATUS.SENT &&
+        status !== CONFIRM_STATUS.OK &&
+        status !== CONFIRM_STATUS.CORRECTION
+      )
+    ) {
+      throw new Error(
+        "Liên kết không hợp lệ hoặc hồ sơ không còn khả dụng."
+      );
+    }
+
+    const result = processCancellationByCitizenId_(
+      cccd,
+      {
+        action: "Rút đơn phúc khảo",
+        role: "Học sinh",
+        actor: "Học sinh",
+        source: "Web App"
+      },
+      {
+        lockAlreadyHeld: true
+      }
+    );
+
+    return {
+      success: true,
+      message:
+        "Nhà trường đã ghi nhận yêu cầu rút toàn bộ đơn phúc khảo.",
+      applicationIds: result.applicationIds
     };
   } finally {
     lock.releaseLock();

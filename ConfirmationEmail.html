@@ -90,6 +90,30 @@ font-weight:bold;
 
 </p>
 
+<p>
+Nếu không tiếp tục phúc khảo, hãy nhấn nút dưới đây. Hệ thống sẽ yêu cầu xác nhận lại trước khi rút đơn.
+</p>
+
+<p style="text-align:center">
+
+<a
+href="<?= withdrawUrl ?>"
+style="
+display:inline-block;
+padding:12px 26px;
+background:#d93025;
+color:#ffffff;
+text-decoration:none;
+border-radius:6px;
+font-weight:bold;
+">
+
+RÚT ĐƠN PHÚC KHẢO
+
+</a>
+
+</p>
+
 <p style="
 background:#fce8e6;
 padding:12px;
@@ -100,16 +124,18 @@ border-left:4px solid #d93025;
 
 <br><br>
 
-Nhà trường tiếp nhận thông tin xác nhận hoặc đính chính của
-<strong>đơn phúc khảo mã <?= maDon ?></strong> đến hết
+Nhà trường tiếp nhận trực tuyến việc xác nhận, đính chính hoặc rút đơn phúc khảo đến
 <strong><?= responseDeadline ?></strong>.
 
 <br><br>
 
-Sau thời điểm trên, nếu không nhận được phản hồi, nhà trường sẽ mặc định
-<strong>thông tin trên đơn phúc khảo bản giấy của mã <?= maDon ?> là chính xác</strong>
-và sử dụng làm căn cứ chính thức để thực hiện
-<strong>thủ tục phúc khảo</strong>.
+Sau thời hạn trên:
+<br>
+• Nếu không phản hồi, Nhà trường mặc định thông tin trên đơn phúc khảo bản giấy là chính xác.
+<br>
+• Nếu đã gửi đính chính thành công, học sinh đến phòng Văn thư nhận đơn giấy đã được đính chính, kiểm tra, ký và nộp lại trước
+<strong><?= correctionReceiptTime ?></strong>, tại
+<strong><?= correctionReceiptLocation ?></strong>.
 
 </p>
 
