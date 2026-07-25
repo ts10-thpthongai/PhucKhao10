@@ -421,7 +421,7 @@ function showDeadlineEndedPage_(row) {
   return renderConfirmationPage_(
     row,
     "Thời hạn phản hồi đã kết thúc",
-    "Nhà trường đã kết thúc tiếp nhận xác nhận, đính chính và rút đơn phúc khảo trực tuyến.",
+    "Nhà trường mặc định thông tin trên đơn phúc khảo bản giấy mà em đã nộp là chính xác.",
     "error"
   );
 }
@@ -436,6 +436,42 @@ function showStudentConfigurationErrorPage_(row) {
 }
 
 function showWithdrawConfirmationPage_(row, token) {
+  const sheet = getConfirmationSheet_();
+  const map = getConfirmationColumnMap_();
+  const cccdCol =
+    map["Số căn cước (hoặc mã định danh cá nhân)"];
+
+  if (!cccdCol) {
+    return showInvalidTokenPage_();
+  }
+
+  const data = sheet
+    .getRange(row, 1, 1, sheet.getLastColumn())
+    .getValues()[0];
+  const cccd = String(data[cccdCol - 1]).trim();
+
+  if (cccd === "") {
+    return showInvalidTokenPage_();
+  }
+
+  const context = getCancellationContext_(cccd);
+  const applicationIds = [];
+  const seenApplicationIds = new Set();
+
+  context.rows.forEach(function(item) {
+    const applicationId = String(
+      item.data[context.applicationIdCol]
+    ).trim();
+
+    if (
+      applicationId !== "" &&
+      !seenApplicationIds.has(applicationId)
+    ) {
+      seenApplicationIds.add(applicationId);
+      applicationIds.push(applicationId);
+    }
+  });
+
   return renderConfirmationPage_(
     row,
     "Xác nhận rút đơn phúc khảo",
@@ -443,7 +479,8 @@ function showWithdrawConfirmationPage_(row, token) {
     "warning",
     {
       showWithdrawForm: true,
-      withdrawToken: token
+      withdrawToken: token,
+      withdrawalApplicationIds: applicationIds
     }
   );
 }
@@ -662,6 +699,8 @@ function renderConfirmationPage_(row, title, message, status, options) {
       Boolean(pageOptions.showConfirmationForm),
     showCorrectionForm: Boolean(pageOptions.showCorrectionForm),
     showWithdrawForm: Boolean(pageOptions.showWithdrawForm),
+    withdrawalApplicationIdsText:
+      (pageOptions.withdrawalApplicationIds || []).join(", "),
     correction: pageOptions.correction || null,
     receiptTime: pageOptions.receiptTime || "",
     receiptLocation: pageOptions.receiptLocation || "",

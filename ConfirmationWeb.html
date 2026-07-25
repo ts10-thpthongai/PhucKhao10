@@ -117,6 +117,10 @@
       margin: 0;
     }
 
+    .scan-summary-column .scan-button {
+      margin-top: 8px;
+    }
+
     .scan-note {
       margin-top: 10px;
       color: #5f6368;
@@ -140,12 +144,23 @@
       </table>
     <? } ?>
 
+    <? if (page.withdrawalApplicationIdsText) { ?>
+      <p>
+        <strong>Toàn bộ mã đơn của thí sinh:</strong>
+        <?= page.withdrawalApplicationIdsText ?>
+      </p>
+    <? } ?>
+
     <? if (page.scan) { ?>
       <section class="scan-info">
         <? if (!page.scan.hasPdfPageNumber) { ?>
           <p>Nhà trường chưa cập nhật số trang file scan đơn giấy.</p>
         <? } else { ?>
-          <div class="scan-summary-row">
+          <div class="<?=
+            page.showCorrectionForm
+              ? "scan-summary-row"
+              : "scan-summary-column"
+          ?>">
             <p>Đơn của bạn nằm ở trang số: <strong><?= page.scan.pageNumber ?></strong></p>
             <? if (page.scan.showScanFileButton) { ?>
               <a
