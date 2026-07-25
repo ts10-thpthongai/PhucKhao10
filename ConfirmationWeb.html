@@ -68,6 +68,10 @@
       background: #d93025;
     }
 
+    .confirmation-button {
+      background: #137333;
+    }
+
     #formError,
     #confirmationError,
     #withdrawError {
@@ -93,13 +97,24 @@
 
     .scan-button {
       display: inline-block;
-      margin-top: 8px;
+      margin-top: 0;
       padding: 11px 20px;
       border-radius: 6px;
       background: #1a73e8;
       color: #fff;
       font-weight: bold;
       text-decoration: none;
+    }
+
+    .scan-summary-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 16px;
+    }
+
+    .scan-summary-row p {
+      margin: 0;
     }
 
     .scan-note {
@@ -130,16 +145,20 @@
         <? if (!page.scan.hasPdfPageNumber) { ?>
           <p>Nhà trường chưa cập nhật số trang file scan đơn giấy.</p>
         <? } else { ?>
-          <p>Đơn của bạn nằm ở trang số: <strong><?= page.scan.pageNumber ?></strong></p>
+          <div class="scan-summary-row">
+            <p>Đơn của bạn nằm ở trang số: <strong><?= page.scan.pageNumber ?></strong></p>
+            <? if (page.scan.showScanFileButton) { ?>
+              <a
+                class="scan-button"
+                href="<?= page.scan.scanFileUrl ?>"
+                target="_blank"
+                rel="noopener noreferrer">
+                XEM FILE SCAN ĐƠN GIẤY
+              </a>
+            <? } ?>
+          </div>
 
           <? if (page.scan.showScanFileButton) { ?>
-            <a
-              class="scan-button"
-              href="<?= page.scan.scanFileUrl ?>"
-              target="_blank"
-              rel="noopener noreferrer">
-              XEM FILE SCAN ĐƠN GIẤY
-            </a>
             <? if (page.showCorrectionForm) { ?>
               <p class="scan-note">Lưu ý: Khi xem file scan, vui lòng không đóng hoặc tải lại trang Đính chính. File scan sẽ được mở ở tab mới, sau khi đối chiếu xong hãy quay lại tab này để tiếp tục nhập nội dung đính chính.</p>
             <? } ?>
@@ -154,7 +173,6 @@
 
     <? if (page.showCorrectionForm) { ?>
       <div id="correctionForm">
-      <p>Ví dụ: Sửa ngày sinh từ 12/03/2011 thành 21/03/2011.</p>
       <label for="correctionNote">Nội dung đính chính</label>
       <textarea id="correctionNote"></textarea>
       <button type="button" id="submitCorrection">Gửi đính chính</button>
@@ -164,7 +182,10 @@
 
     <? if (page.showConfirmationForm) { ?>
       <section id="confirmationForm">
-        <button type="button" id="submitConfirmation">
+        <button
+          type="button"
+          class="confirmation-button"
+          id="submitConfirmation">
           XÁC NHẬN NGUYỆN VỌNG PHÚC KHẢO
         </button>
         <p id="confirmationError" role="alert"></p>
@@ -173,7 +194,7 @@
 
     <? if (page.showWithdrawForm) { ?>
       <section id="withdrawForm">
-        <p><strong>Cảnh báo:</strong> Thao tác này sẽ rút toàn bộ đơn phúc khảo hiện tại cùng CCCD và không nên thực hiện nhầm.</p>
+        <p><strong>Cảnh báo:</strong> Thao tác này sẽ rút toàn bộ đơn phúc khảo hiện tại có chung CCCD và không nên thực hiện nhầm.</p>
         <button
           type="button"
           class="withdraw-button"

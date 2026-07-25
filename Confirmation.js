@@ -439,7 +439,7 @@ function showWithdrawConfirmationPage_(row, token) {
   return renderConfirmationPage_(
     row,
     "Xác nhận rút đơn phúc khảo",
-    "Bạn đang yêu cầu rút toàn bộ đơn phúc khảo. Toàn bộ các mã đơn hiện tại cùng CCCD sẽ không còn hiệu lực. Vui lòng kiểm tra kỹ trước khi xác nhận.",
+    "Bạn đang yêu cầu rút toàn bộ đơn phúc khảo. Toàn bộ các mã đơn hiện tại có chung CCCD sẽ không còn hiệu lực. Vui lòng kiểm tra kỹ trước khi xác nhận.",
     "warning",
     {
       showWithdrawForm: true,
