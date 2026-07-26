@@ -4134,7 +4134,8 @@ const EVENT_LOG_HEADERS = [
   "Hành động",
   "Vai trò",
   "Người thực hiện",
-  "Nguồn thao tác"
+  "Nguồn thao tác",
+  "Mã xác nhận đã thu hồi"
 ];
 
 function getOrCreateEventLogSheet_() {
@@ -4150,16 +4151,37 @@ function getOrCreateEventLogSheet_() {
     return sheet;
   }
 
+  const oldHeaderCount = EVENT_LOG_HEADERS.length - 1;
   const existingHeaders = sheet
     .getRange(1, 1, 1, EVENT_LOG_HEADERS.length)
     .getDisplayValues()[0];
-  const headersAreValid = EVENT_LOG_HEADERS.every(
+  const oldHeadersAreValid = EVENT_LOG_HEADERS
+    .slice(0, oldHeaderCount)
+    .every(
     function(header, index) {
       return String(existingHeaders[index]).trim() === header;
     }
   );
 
-  if (!headersAreValid) {
+  if (!oldHeadersAreValid) {
+    throw new Error(
+      'Sheet "' +
+      EVENT_LOG_SHEET_NAME +
+      '" không có đúng cấu trúc tiêu đề.'
+    );
+  }
+
+  const revokedTokenHeader = String(
+    existingHeaders[oldHeaderCount]
+  ).trim();
+
+  if (revokedTokenHeader === "") {
+    sheet
+      .getRange(1, EVENT_LOG_HEADERS.length)
+      .setValue(EVENT_LOG_HEADERS[oldHeaderCount]);
+  } else if (
+    revokedTokenHeader !== EVENT_LOG_HEADERS[oldHeaderCount]
+  ) {
     throw new Error(
       'Sheet "' +
       EVENT_LOG_SHEET_NAME +
@@ -4193,8 +4215,64 @@ function appendEventLog_(event, sheet) {
       event.action,
       event.role,
       event.actor,
-      event.source
+      event.source,
+      (event.revokedTokens || []).join(", ")
     ]]);
+}
+
+function getConfirmationTokensByCitizenId_(cccd) {
+  const normalizedCccd = String(cccd || "").trim();
+
+  if (normalizedCccd === "") {
+    return [];
+  }
+
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName("Data3");
+
+  if (!sheet || sheet.getLastRow() <= 1) {
+    return [];
+  }
+
+  const map = getColumnMap_(sheet);
+  const cccdCol =
+    map["Số căn cước (hoặc mã định danh cá nhân)"];
+  const tokenCol = map["Mã xác nhận"];
+
+  if (!cccdCol || !tokenCol) {
+    throw new Error(
+      "Data3 thiếu cột cần thiết để lưu mã xác nhận đã thu hồi."
+    );
+  }
+
+  const firstCol = Math.min(cccdCol, tokenCol);
+  const columnCount = Math.abs(cccdCol - tokenCol) + 1;
+  const values = sheet
+    .getRange(
+      2,
+      firstCol,
+      sheet.getLastRow() - 1,
+      columnCount
+    )
+    .getValues();
+  const cccdIndex = cccdCol - firstCol;
+  const tokenIndex = tokenCol - firstCol;
+  const uniqueTokens = new Map();
+
+  values.forEach(function(row) {
+    if (String(row[cccdIndex]).trim() !== normalizedCccd) {
+      return;
+    }
+
+    const token = String(row[tokenIndex]).trim();
+
+    if (token !== "") {
+      uniqueTokens.set(token, true);
+    }
+  });
+
+  return Array.from(uniqueTokens.keys());
 }
 
 function cancelApplication(){
@@ -4475,6 +4553,9 @@ function processCancellationByCitizenId_(cccd, audit, options) {
     }
 
     const eventSheet = getOrCreateEventLogSheet_();
+    const revokedTokens = getConfirmationTokensByCitizenId_(
+      context.normalizedCccd
+    );
     const hoTen = String(
       context.rows[0].data[context.nameCol] == null
         ? ""
@@ -4526,7 +4607,8 @@ function processCancellationByCitizenId_(cccd, audit, options) {
         action: auditData.action,
         role: auditData.role,
         actor: auditData.actor,
-        source: auditData.source
+        source: auditData.source,
+        revokedTokens: revokedTokens
       },
       eventSheet
     );

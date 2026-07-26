@@ -316,6 +316,10 @@ function openConfirmation(token, action) {
   const row = findConfirmationRowByToken_(token);
 
   if (!row) {
+    if (isRevokedConfirmationToken_(token)) {
+      return showWithdrawnApplicationPage_();
+    }
+
     return showInvalidTokenPage_();
   }
 
@@ -572,6 +576,16 @@ function showInvalidTokenPage_() {
   );
 }
 
+function showWithdrawnApplicationPage_() {
+
+  return renderConfirmationPage_(
+    null,
+    "Bạn đã rút đơn",
+    "Nhà trường đã ghi nhận yêu cầu rút đơn phúc khảo của bạn. Các liên kết xác nhận, đính chính và rút đơn không còn sử dụng được.",
+    "warning"
+  );
+}
+
 function showConfirmationErrorPage_() {
 
   return renderConfirmationPage_(
@@ -681,6 +695,69 @@ function findConfirmationRowByToken_(token) {
   }
 
   return null;
+}
+
+function isRevokedConfirmationToken_(token) {
+  const normalizedToken = String(token || "").trim();
+
+  if (normalizedToken === "") {
+    return false;
+  }
+
+  try {
+    const sheet = SpreadsheetApp
+      .getActiveSpreadsheet()
+      .getSheetByName(EVENT_LOG_SHEET_NAME);
+
+    if (!sheet) {
+      return false;
+    }
+
+    const existingHeaders = sheet
+      .getRange(1, 1, 1, EVENT_LOG_HEADERS.length)
+      .getDisplayValues()[0];
+    const headersAreValid = EVENT_LOG_HEADERS.every(
+      function(header, index) {
+        return String(existingHeaders[index]).trim() === header;
+      }
+    );
+
+    if (!headersAreValid) {
+      throw new Error(
+        'Sheet "' +
+        EVENT_LOG_SHEET_NAME +
+        '" không có đúng cấu trúc tiêu đề.'
+      );
+    }
+
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow <= 1) {
+      return false;
+    }
+
+    const revokedTokenValues = sheet
+      .getRange(
+        2,
+        EVENT_LOG_HEADERS.length,
+        lastRow - 1,
+        1
+      )
+      .getDisplayValues();
+
+    return revokedTokenValues.some(function(row) {
+      return String(row[0])
+        .split(",")
+        .some(function(storedToken) {
+          return storedToken.trim() === normalizedToken;
+        });
+    });
+  } catch (error) {
+    Logger.log(
+      "Không thể kiểm tra mã xác nhận đã thu hồi: " + error
+    );
+    return false;
+  }
 }
 
 function renderConfirmationPage_(row, title, message, status, options) {
