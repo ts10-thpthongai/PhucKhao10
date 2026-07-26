@@ -323,15 +323,6 @@ function openConfirmation(token, action) {
     return showInvalidTokenPage_();
   }
 
-  try {
-    if (getLockButtonDeadlineInfo_(true).isExpired) {
-      return showDeadlineEndedPage_(row);
-    }
-  } catch (error) {
-    Logger.log("Cấu hình thời hạn phản hồi không hợp lệ: " + error);
-    return showStudentConfigurationErrorPage_(row);
-  }
-
   const sheet = getConfirmationSheet_();
   const map = getConfirmationColumnMap_();
   const status = String(
@@ -340,6 +331,38 @@ function openConfirmation(token, action) {
       map["Xác nhận nguyện vọng phúc khảo"]
     ).getValue()
   ).trim();
+  const storedCorrection = getStoredCorrection_(row);
+  let deadlineInfo;
+
+  try {
+    deadlineInfo = getLockButtonDeadlineInfo_(true);
+  } catch (error) {
+    Logger.log("Cấu hình thời hạn phản hồi không hợp lệ: " + error);
+    return showStudentConfigurationErrorPage_(row);
+  }
+
+  if (deadlineInfo.isExpired) {
+    if (status === CONFIRM_STATUS.OK) {
+      return action === "correction"
+        ? showConfirmedCorrectionUnavailablePage_(row)
+        : showConfirmedPage_(row);
+    }
+
+    if (
+      status === CONFIRM_STATUS.CORRECTION ||
+      (status === CONFIRM_STATUS.SENT && storedCorrection)
+    ) {
+      return action === "correction"
+        ? showCorrectionPage_(row)
+        : showCorrectionInProgressPage_(row);
+    }
+
+    if (status === CONFIRM_STATUS.SENT) {
+      return showDeadlineEndedPage_(row);
+    }
+
+    return showInvalidTokenPage_();
+  }
 
   if (action === "withdraw") {
     if (
@@ -369,7 +392,7 @@ function openConfirmation(token, action) {
     return showCorrectionInProgressPage_(row);
   }
 
-  if (status === CONFIRM_STATUS.SENT && getStoredCorrection_(row)) {
+  if (status === CONFIRM_STATUS.SENT && storedCorrection) {
     return action === "correction"
       ? showCorrectionPage_(row)
       : showCorrectionInProgressPage_(row);
@@ -459,10 +482,20 @@ function showWithdrawConfirmationPage_(row, token) {
   }
 
   const context = getCancellationContext_(cccd);
+  const rowsToWithdraw = context.rows.filter(function(item) {
+    return String(
+      item.data[context.cancelCol - 1]
+    ).trim() !== "Đã rút đơn";
+  });
+
+  if (rowsToWithdraw.length === 0) {
+    return showWithdrawnApplicationPage_();
+  }
+
   const applicationIds = [];
   const seenApplicationIds = new Set();
 
-  context.rows.forEach(function(item) {
+  rowsToWithdraw.forEach(function(item) {
     const applicationId = String(
       item.data[context.applicationIdCol]
     ).trim();
@@ -1088,18 +1121,63 @@ function submitWithdrawal(token) {
       );
     }
 
+    const context = getCancellationContext_(cccd);
+    let actor = "";
+
+    try {
+      actor = findLatestValidCancelRecipientEmail_(
+        context.rows,
+        context.headerMap
+      );
+    } catch (actorError) {
+      Logger.log(
+        "Không thể xác định email actor khi học sinh rút đơn: " +
+        String(actorError.message || actorError)
+      );
+    }
+
+    if (actor === "") {
+      actor = "Học sinh";
+      Logger.log(
+        "Không tìm thấy email hợp lệ của học sinh khi rút đơn; " +
+        "dùng actor dự phòng cho CCCD " +
+        cccd +
+        "."
+      );
+    }
+
     const result = processCancellationByCitizenId_(
       cccd,
       {
         action: "Rút đơn phúc khảo",
         role: "Học sinh",
-        actor: "Học sinh",
+        actor: actor,
         source: "Web App"
       },
       {
-        lockAlreadyHeld: true
+        lockAlreadyHeld: true,
+        context: context
       }
     );
+
+    try {
+      const emailResult = sendCancelEmail_(
+        result.rows,
+        result.cccd
+      );
+
+      if (!emailResult.success) {
+        Logger.log(
+          "Không gửi được email rút đơn từ Web App: " +
+          String(emailResult.error || "Không rõ lỗi.")
+        );
+      }
+    } catch (emailError) {
+      Logger.log(
+        "Không gửi được email rút đơn từ Web App: " +
+        String(emailError.message || emailError)
+      );
+    }
 
     return {
       success: true,

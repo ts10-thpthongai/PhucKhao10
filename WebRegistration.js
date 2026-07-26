@@ -10,7 +10,7 @@ function openWebRegistrationDialog(){
     HtmlService
       .createTemplateFromFile("GiaoDienWebDK")
       .evaluate()
-      .setWidth(760)
+      .setWidth(1250)
       .setHeight(720);
 
   SpreadsheetApp

@@ -306,18 +306,46 @@ function findCandidate_(
   const cccdCol =
     headerMap["Số CCCD"] - 1;
 
-  const learnedClassCol =
-    headerMap["Lớp đã học"];
+  const requiredHeaders = [
+    "Số CCCD",
+    "SBD",
+    "Họ tên",
+    "Ngày sinh",
+    "Trường THCS",
+    "Ngoại ngữ",
+    "Ngữ văn",
+    "N.ngữ",
+    "Toán",
+    "Lớp đã học"
+  ];
 
-  if (!learnedClassCol) {
+  const missingHeaders =
+    requiredHeaders.filter(function(header){
+      return !headerMap[header];
+    });
+
+  if (missingHeaders.length) {
 
     Logger.log(
-      'Thiếu cột "Lớp đã học" trong ' +
+      "Thiếu cột trong " +
       config.DATA2 +
-      ". Không thể cập nhật lớp."
+      ": " +
+      missingHeaders.join(", ")
     );
 
+    return null;
+
   }
+
+  const soBaoDanhCol = headerMap["SBD"] - 1;
+  const hoTenCol = headerMap["Họ tên"] - 1;
+  const ngaySinhCol = headerMap["Ngày sinh"] - 1;
+  const truongCol = headerMap["Trường THCS"] - 1;
+  const ngoaiNguCol = headerMap["Ngoại ngữ"] - 1;
+  const vanCol = headerMap["Ngữ văn"] - 1;
+  const nnCol = headerMap["N.ngữ"] - 1;
+  const toanCol = headerMap["Toán"] - 1;
+  const learnedClassCol = headerMap["Lớp đã học"] - 1;
 
   for (let i = 0; i < values.length; i++) {
 
@@ -329,25 +357,24 @@ function findCandidate_(
 
       return {
 
-        soBaoDanh: values[i][2],
+        soBaoDanh: values[i][soBaoDanhCol],
 
-        hoTen: values[i][3],
+        hoTen: values[i][hoTenCol],
 
-        ngaySinh: values[i][4],
+        ngaySinh: values[i][ngaySinhCol],
 
-        truong: values[i][5],
+        truong: values[i][truongCol],
 
-        ngoaiNgu: values[i][6],
+        ngoaiNgu: values[i][ngoaiNguCol],
 
-        van: values[i][7],
+        van: values[i][vanCol],
 
-        nn: values[i][8],
+        nn: values[i][nnCol],
 
-        toan: values[i][9],
+        toan: values[i][toanCol],
 
-        lopDaHoc: learnedClassCol
-          ? String(values[i][learnedClassCol - 1] || "").trim()
-          : ""
+        lopDaHoc:
+          String(values[i][learnedClassCol] || "").trim()
 
       };
 
@@ -3562,12 +3589,14 @@ const dialogData = {
  *****************************************************/
 function acceptApplication(targetRow){
 
+  const totalStart = Date.now();
   const config = getConfig_();
   const sheet =
     SpreadsheetApp
       .getActiveSpreadsheet()
       .getSheetByName(config.DATA1);
 
+  const readStart = Date.now();
   const headerMap =
     getColumnMap_(sheet);
 
@@ -3583,6 +3612,7 @@ function acceptApplication(targetRow){
         sheet.getLastColumn()
       )
       .getValues();
+  const readDuration = Date.now() - readStart;
 
   const sbdCol =
     headerMap["Số báo danh"]-1;
@@ -3607,6 +3637,7 @@ const cancelCol =
   const replacedRanges = [];
   let shouldAcceptTarget = false;
 
+  const updateStart = Date.now();
   values.forEach(function(row,index){
 
   if(
@@ -3664,7 +3695,24 @@ const cancelCol =
 
   }
 
-rebuildAcceptedList(values, headerMap);
+  const updateDuration = Date.now() - updateStart;
+  const rebuildStart = Date.now();
+  rebuildAcceptedList(values, headerMap);
+  const rebuildDuration = Date.now() - rebuildStart;
+
+  Logger.log(
+    "[PERF][acceptApplication] readData1Ms=" +
+    readDuration +
+    " updateStatusMs=" +
+    updateDuration +
+    " rebuildAcceptedListMs=" +
+    rebuildDuration +
+    " replacedCount=" +
+    replacedRanges.length +
+    " totalMs=" +
+    (Date.now() - totalStart)
+  );
+
     return {
 
     success: true,
@@ -3731,6 +3779,7 @@ function showAcceptSuccess(){
  *****************************************************/
 function rebuildAcceptedList(sourceValues, sourceMap) {
 
+  const totalStart = Date.now();
   const config = getConfig_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -3756,6 +3805,7 @@ function rebuildAcceptedList(sourceValues, sourceMap) {
 
   }
 
+  const readData3Start = Date.now();
   const targetLastRow = target.getLastRow();
   const targetLastColumn = target.getLastColumn();
 
@@ -3787,6 +3837,7 @@ function rebuildAcceptedList(sourceValues, sourceMap) {
         1
       ).getNotes()
     : [];
+  const readData3Duration = Date.now() - readData3Start;
 
   const paperCol =
     sourceMap["Đã nộp đơn giấy"]-1;
@@ -3801,6 +3852,7 @@ function rebuildAcceptedList(sourceValues, sourceMap) {
   // Danh sách đơn hợp lệ từ Data1
   //--------------------------------------------------
 
+  const memoryStart = Date.now();
   const sourceMapByMaDon = {};
 
   sourceValues.forEach(function(row){
@@ -3926,6 +3978,8 @@ function rebuildAcceptedList(sourceValues, sourceMap) {
 
   });
 
+  const memoryDuration = Date.now() - memoryStart;
+  const writeStart = Date.now();
 
 if(result.length){
 
@@ -3976,6 +4030,25 @@ if(surplusRowCount>0){
   ).clearNote();
 
 }
+
+const writeDuration = Date.now() - writeStart;
+
+Logger.log(
+  "[PERF][rebuildAcceptedList] readData3AndNotesMs=" +
+  readData3Duration +
+  " filterMergeSortMs=" +
+  memoryDuration +
+  " writeData3AndNotesMs=" +
+  writeDuration +
+  " sourceRowCount=" +
+  sourceValues.length +
+  " oldData3RowCount=" +
+  targetValues.length +
+  " resultRowCount=" +
+  result.length +
+  " totalMs=" +
+  (Date.now() - totalStart)
+);
 
 }
 
@@ -4540,15 +4613,15 @@ function processCancellationByCitizenId_(cccd, audit, options) {
       throw new Error("Thiếu thông tin lưu vết thao tác.");
     }
 
-    const allRowsAlreadyWithdrawn = context.rows.every(
+    const rowsToProcess = context.rows.filter(
       function(item) {
         return String(
           item.data[context.cancelCol - 1]
-        ).trim() === "Đã rút đơn";
+        ).trim() !== "Đã rút đơn";
       }
     );
 
-    if (allRowsAlreadyWithdrawn) {
+    if (rowsToProcess.length === 0) {
       throw new Error("Hồ sơ đã được rút trước đó.");
     }
 
@@ -4565,7 +4638,7 @@ function processCancellationByCitizenId_(cccd, audit, options) {
     const paperRanges = [];
     const applicationIds = [];
 
-    context.rows.forEach(function(item) {
+    rowsToProcess.forEach(function(item) {
       const valueIndex = item.sheetRow - 2;
 
       cancelRanges.push(
@@ -4615,13 +4688,13 @@ function processCancellationByCitizenId_(cccd, audit, options) {
 
     return {
       cccd: context.normalizedCccd,
-      processedCount: context.rows.length,
+      processedCount: rowsToProcess.length,
       applicationIds: applicationIds,
       action: auditData.action,
       role: auditData.role,
       actor: auditData.actor,
       source: auditData.source,
-      rows: context.rows
+      rows: rowsToProcess
     };
   } finally {
     if (lock) {
@@ -5226,27 +5299,6 @@ history.push({
 
 }
 /*****************************************************
- * Mở giao diện đăng ký trên web TSĐC
- *****************************************************/
-function openWebRegistrationDialog() {
-
-  if (!requireAdmin_()) return;
-
-  const html =
-    HtmlService
-      .createHtmlOutputFromFile("GiaoDienWebDK")
-      .setWidth(1250)
-      .setHeight(720);
-
-  SpreadsheetApp
-    .getUi()
-    .showModalDialog(
-      html,
-      "Đăng ký trên web TSĐC"
-    );
-
-}
-/*****************************************************
  * Lấy danh sách cần đăng ký trên web
  *****************************************************/
 function getWebRegistrationList() {
@@ -5315,38 +5367,6 @@ function getWebRegistrationList() {
   return list;
 
 }
-/*****************************************************
- * Đánh dấu đã đăng ký trên web
- *****************************************************/
-function finishWebRegistration(row){
-
-  const sheet =
-    SpreadsheetApp
-      .getActiveSpreadsheet()
-      .getSheetByName("Data3");
-
-  const map =
-    getColumnMap_(sheet);
-
-  sheet
-    .getRange(
-      row,
-      map["Đăng ký phúc khảo trên web TSĐC"]
-    )
-    .setValue("Đã đăng ký");
-
-  SpreadsheetApp
-    .getActive()
-    .toast(
-      "✓ Đã cập nhật Data3",
-      "",
-      1
-    );
-
-  return true;
-
-}
-
 /*****************************************************
  * Gửi kết quả phúc khảo
  *****************************************************/
