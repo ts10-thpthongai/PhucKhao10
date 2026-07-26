@@ -3590,138 +3590,166 @@ const dialogData = {
 function acceptApplication(targetRow){
 
   const totalStart = Date.now();
-  const config = getConfig_();
-  const sheet =
-    SpreadsheetApp
-      .getActiveSpreadsheet()
-      .getSheetByName(config.DATA1);
+  const lock = LockService.getDocumentLock();
 
-  const readStart = Date.now();
-  const headerMap =
-    getColumnMap_(sheet);
+  lock.waitLock(30000);
 
-  const lastRow =
-    sheet.getLastRow();
+  try {
+    const config = getConfig_();
+    const sheet =
+      SpreadsheetApp
+        .getActiveSpreadsheet()
+        .getSheetByName(config.DATA1);
 
-  const values =
-    sheet
-      .getRange(
-        2,
-        1,
-        lastRow-1,
-        sheet.getLastColumn()
-      )
-      .getValues();
-  const readDuration = Date.now() - readStart;
+    const readStart = Date.now();
+    const headerMap =
+      getColumnMap_(sheet);
 
-  const sbdCol =
-    headerMap["Số báo danh"]-1;
+    const lastRow =
+      sheet.getLastRow();
+    const normalizedTargetRow = Number(targetRow);
 
-  const paperCol =
-    headerMap["Đã nộp đơn giấy"]-1;
+    if (
+      !Number.isInteger(normalizedTargetRow) ||
+      normalizedTargetRow < 2 ||
+      normalizedTargetRow > lastRow
+    ) {
+      throw new Error("Mã đơn không còn tồn tại.");
+    }
+
+    const values =
+      sheet
+        .getRange(
+          2,
+          1,
+          lastRow-1,
+          sheet.getLastColumn()
+        )
+        .getValues();
+    const readDuration = Date.now() - readStart;
+
+    const sbdCol =
+      headerMap["Số báo danh"]-1;
+
+    const paperCol =
+      headerMap["Đã nộp đơn giấy"]-1;
 
     const maDonCol =
-  headerMap["Mã đơn"]-1;
+      headerMap["Mã đơn"]-1;
 
-const cancelCol =
-  headerMap["Hủy phúc khảo"]-1;
+    const cancelCol =
+      headerMap["Hủy phúc khảo"]-1;
 
-  const targetIndex =
-    targetRow-2;
+    const targetIndex =
+      normalizedTargetRow-2;
 
-  const targetSBD =
-    String(
-      values[targetIndex][sbdCol]
-    ).trim();
+    const targetData = values[targetIndex];
+    const targetSBD =
+      String(targetData[sbdCol]).trim();
+    const targetApplicationId =
+      String(targetData[maDonCol]).trim();
 
-  const replacedRanges = [];
-  let shouldAcceptTarget = false;
+    if (targetSBD === "" || targetApplicationId === "") {
+      throw new Error("Mã đơn không còn tồn tại.");
+    }
 
-  const updateStart = Date.now();
-  values.forEach(function(row,index){
+    if (
+      String(targetData[cancelCol]).trim()=="Đã rút đơn"
+    ) {
+      throw new Error("Mã đơn đã được rút và không thể tiếp nhận.");
+    }
 
-  if(
-    String(row[sbdCol]).trim()!=targetSBD
-  ){
-    return;
-  }
+    const replacedRanges = [];
+    let shouldAcceptTarget = false;
 
-  // Bỏ qua đơn đã rút
-  if(
-    String(row[cancelCol]).trim()=="Đã rút đơn"
-  ){
-    return;
-  }
+    const updateStart = Date.now();
+    values.forEach(function(row,index){
 
-  const sheetRow =
-    index+2;
+      if(
+        String(row[sbdCol]).trim()!=targetSBD
+      ){
+        return;
+      }
 
-  if(sheetRow==targetRow){
+      // Bỏ qua đơn đã rút
+      if(
+        String(row[cancelCol]).trim()=="Đã rút đơn"
+      ){
+        return;
+      }
 
-    row[paperCol] = "Đã nộp";
-    shouldAcceptTarget = true;
+      const sheetRow =
+        index+2;
 
-  }
-  else{
+      if(sheetRow==normalizedTargetRow){
 
-    row[paperCol] = "Đã thay thế";
-    replacedRanges.push(
-      sheet.getRange(
-        sheetRow,
-        headerMap["Đã nộp đơn giấy"]
-      ).getA1Notation()
+        row[paperCol] = "Đã nộp";
+        shouldAcceptTarget = true;
+
+      }
+      else{
+
+        row[paperCol] = "Đã thay thế";
+        replacedRanges.push(
+          sheet.getRange(
+            sheetRow,
+            headerMap["Đã nộp đơn giấy"]
+          ).getA1Notation()
+        );
+
+      }
+
+    });
+
+    if(replacedRanges.length){
+
+      sheet
+        .getRangeList(replacedRanges)
+        .setValue("Đã thay thế");
+
+    }
+
+    if(shouldAcceptTarget){
+
+      sheet
+        .getRange(
+          normalizedTargetRow,
+          headerMap["Đã nộp đơn giấy"]
+        )
+        .setValue("Đã nộp");
+
+    }
+
+    const updateDuration = Date.now() - updateStart;
+    const rebuildStart = Date.now();
+    rebuildAcceptedList(values, headerMap);
+    const rebuildDuration = Date.now() - rebuildStart;
+
+    Logger.log(
+      "[PERF][acceptApplication] readData1Ms=" +
+      readDuration +
+      " updateStatusMs=" +
+      updateDuration +
+      " rebuildAcceptedListMs=" +
+      rebuildDuration +
+      " replacedCount=" +
+      replacedRanges.length +
+      " totalMs=" +
+      (Date.now() - totalStart)
     );
-
-  }
-
-});
-
-  if(replacedRanges.length){
-
-    sheet
-      .getRangeList(replacedRanges)
-      .setValue("Đã thay thế");
-
-  }
-
-  if(shouldAcceptTarget){
-
-    sheet
-      .getRange(
-        targetRow,
-        headerMap["Đã nộp đơn giấy"]
-      )
-      .setValue("Đã nộp");
-
-  }
-
-  const updateDuration = Date.now() - updateStart;
-  const rebuildStart = Date.now();
-  rebuildAcceptedList(values, headerMap);
-  const rebuildDuration = Date.now() - rebuildStart;
-
-  Logger.log(
-    "[PERF][acceptApplication] readData1Ms=" +
-    readDuration +
-    " updateStatusMs=" +
-    updateDuration +
-    " rebuildAcceptedListMs=" +
-    rebuildDuration +
-    " replacedCount=" +
-    replacedRanges.length +
-    " totalMs=" +
-    (Date.now() - totalStart)
-  );
 
     return {
 
-    success: true,
+      success: true,
 
-    targetRow: targetRow,
+      targetRow: normalizedTargetRow,
 
-    sbd: targetSBD
+      sbd: targetSBD
 
-  };
+    };
+  } finally {
+    lock.releaseLock();
+  }
 
 }
 
