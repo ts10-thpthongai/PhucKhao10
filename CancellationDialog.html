@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #202124;
+      margin: 0;
+      padding: 24px;
+    }
+
+    .warning {
+      background: #fef7e0;
+      border-left: 4px solid #f9ab00;
+      padding: 12px 16px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 10px 16px;
+    }
+
+    #confirmCancellation {
+      background: #d93025;
+      color: white;
+    }
+
+    #confirmCancellation:disabled {
+      cursor: default;
+      opacity: 0.65;
+    }
+
+    #result {
+      margin-top: 16px;
+      white-space: pre-line;
+    }
+
+    .error {
+      color: #d93025;
+    }
+
+    .success {
+      color: #137333;
+    }
+  </style>
+</head>
+<body>
+  <h2>Xác nhận hủy đơn phúc khảo</h2>
+
+  <p><strong>Họ tên:</strong> <?= data.fullName ?></p>
+  <p><strong>Số căn cước:</strong> <?= data.cccd ?></p>
+  <p><strong>Số báo danh:</strong> <?= data.sbd ?></p>
+  <p>
+    <strong>Các mã đơn nhìn thấy khi mở hộp thoại:</strong>
+    <?= data.applicationIds.join(", ") ?>
+  </p>
+
+  <p class="warning">
+    Khi xác nhận, hệ thống sẽ hủy toàn bộ mã đơn hiện tại có cùng
+    số căn cước, bao gồm mã đơn phát sinh sau khi hộp thoại này được mở.
+  </p>
+
+  <div id="result" role="alert"></div>
+
+  <div class="buttons">
+    <button type="button" id="closeDialog">Đóng</button>
+    <button type="button" id="confirmCancellation">
+      XÁC NHẬN HỦY TOÀN BỘ ĐƠN
+    </button>
+  </div>
+
+  <script>
+    const cccd = <?!= cccdJson ?>;
+    const confirmButton =
+      document.getElementById("confirmCancellation");
+    const closeButton = document.getElementById("closeDialog");
+    const resultElement = document.getElementById("result");
+
+    closeButton.addEventListener("click", function() {
+      google.script.host.close();
+    });
+
+    confirmButton.addEventListener("click", function() {
+      confirmButton.disabled = true;
+      confirmButton.textContent = "Đang xử lý...";
+      resultElement.className = "";
+      resultElement.textContent = "";
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          resultElement.className = "success";
+          resultElement.textContent = result.message;
+          confirmButton.remove();
+          closeButton.focus();
+        })
+        .withFailureHandler(function(error) {
+          resultElement.className = "error";
+          resultElement.textContent = error.message ||
+            "Không thể xử lý yêu cầu hủy đơn.";
+          confirmButton.disabled = false;
+          confirmButton.textContent = "XÁC NHẬN HỦY TOÀN BỘ ĐƠN";
+        })
+        .confirmCancellationFromMenu(cccd);
+    });
+  </script>
+</body>
+</html>

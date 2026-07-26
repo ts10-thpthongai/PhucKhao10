@@ -4397,82 +4397,69 @@ function cancelApplication(){
 
   }
 
-  let message="";
+  const template = HtmlService.createTemplateFromFile(
+    "CancellationDialog"
+  );
 
-  message+="Họ tên: "
-    +context.rows[0].data[context.nameCol];
+  template.data = {
+    fullName: context.rows[0].data[context.nameCol],
+    cccd: cccd,
+    sbd: context.rows[0].data[context.sbdCol],
+    applicationIds: context.rows.map(function(item) {
+      return String(
+        item.data[context.applicationIdCol] || ""
+      ).trim();
+    }).filter(function(applicationId) {
+      return applicationId !== "";
+    })
+  };
+  template.cccdJson = JSON.stringify(cccd)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026");
 
-  message+="\n";
+  ui.showModalDialog(
+    template.evaluate().setWidth(600).setHeight(520),
+    "Xác nhận hủy đơn phúc khảo"
+  );
 
-  message+="SBD: "
-    +context.rows[0].data[context.sbdCol];
+}
 
-  message+="\n\n";
+function confirmCancellationFromMenu(cccd) {
+  const internalUser = requireInternalUser_();
 
-  message+="Các mã đơn:\n\n";
-
-  context.rows.forEach(function(r){
-
-    message+=
-      r.data[context.applicationIdCol]
-      +"\n";
-
-  });
-
-  message+="\n";
-
-  message+="Bạn chắc chắn muốn hủy?";
-
-  const result=
-    ui.alert(
-      "Xác nhận",
-      message,
-      ui.ButtonSet.YES_NO
+  if (!internalUser) {
+    throw new Error(
+      "Tài khoản hiện tại không có quyền sử dụng chức năng này."
     );
-
-  if(result!=ui.Button.YES){
-    return;
   }
 
-  let cancellationResult;
+  const normalizedCccd = String(cccd || "").trim();
 
-  try {
-    cancellationResult = processCancellationByCitizenId_(
-      cccd,
-      {
-        action: "Huỷ đơn",
-        role: internalUser.role,
-        actor: internalUser.email,
-        source: "Menu Apps Script"
-      },
-      {
-        context: context
-      }
-    );
-  } catch (error) {
-    const errorMessage = String(error.message || error);
-
-    ui.alert(
-      errorMessage === "Hồ sơ đã được rút trước đó."
-        ? "Hồ sơ đã được rút trước đó"
-        : "Hủy đơn chưa hoàn tất đầy đủ",
-      errorMessage,
-      ui.ButtonSet.OK
-    );
-    return;
+  if (normalizedCccd === "") {
+    throw new Error("Số căn cước không được để trống.");
   }
 
+  const cancellationResult = processCancellationByCitizenId_(
+    normalizedCccd,
+    {
+      action: "Huỷ đơn",
+      role: internalUser.role,
+      actor: internalUser.email,
+      source: "Menu Apps Script"
+    }
+  );
   const emailResult = sendCancelEmail_(
     cancellationResult.rows,
     cancellationResult.cccd
   );
-  let completionMessage =
+  let message =
     "Đã hủy " +
     cancellationResult.processedCount +
     " đơn.";
 
   if (!emailResult.success) {
-    completionMessage +=
+    message +=
       "\n\nTrạng thái hồ sơ và nhật ký đã được cập nhật, " +
       "nhưng email thông báo không gửi được. Vui lòng kiểm tra lại." +
       (
@@ -4482,12 +4469,13 @@ function cancelApplication(){
       );
   }
 
-  ui.alert(
-    emailResult.success ? "Hoàn thành" : "Hoàn thành, lỗi gửi email",
-    completionMessage,
-    ui.ButtonSet.OK
-  );
-
+  return {
+    success: true,
+    processedCount: cancellationResult.processedCount,
+    applicationIds: cancellationResult.applicationIds,
+    emailSuccess: emailResult.success,
+    message: message
+  };
 }
 
 
@@ -4593,7 +4581,7 @@ function processCancellationByCitizenId_(cccd, audit, options) {
   }
 
   try {
-    const context = settings.context || getCancellationContext_(cccd);
+    const context = getCancellationContext_(cccd);
 
     if (
       context.normalizedCccd !== String(cccd || "").trim() ||
