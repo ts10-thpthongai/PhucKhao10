@@ -52,6 +52,9 @@ function getPendingWebRegistration(){
   const registerCol =
     map["Đăng ký phúc khảo trên web TSĐC"]-1;
 
+  const noteCol =
+    map["Ghi chú"];
+
   const scanFolder =
 DriveApp.getFolderById(
 config.SCAN_FOLDER_ID
@@ -104,6 +107,8 @@ config.SCAN_FOLDER_ID
   mon: row[map["Môn xin phúc khảo"]-1],
 
   lyDo: row[map["Lý do phúc khảo"]-1],
+
+  ghiChu: noteCol ? row[noteCol-1] : "",
 
   pdf: row[map["Link PDF"]-1],
 

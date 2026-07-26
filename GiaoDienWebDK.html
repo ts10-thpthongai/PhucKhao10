@@ -121,6 +121,32 @@ font-size:14px;
 
 }
 
+.correction-box{
+
+display:none;
+
+border-color:#f0b429;
+
+background:#fffaf0;
+
+}
+
+.correction-box .title{
+
+color:#b06000;
+
+}
+
+#correctionNote{
+
+white-space:pre-wrap;
+
+word-break:break-word;
+
+line-height:1.5;
+
+}
+
 .progress{
 
 width:100%;
@@ -341,6 +367,20 @@ readonly>
 
 </div>
 
+<div
+id="correctionBox"
+class="box correction-box">
+
+<div class="title">
+
+📝 Nội dung đính chính
+
+</div>
+
+<div id="correctionNote"></div>
+
+</div>
+
 <div class="buttons">
 
 <button
@@ -506,6 +546,21 @@ function showStudent(){
 
   document.getElementById("lyDo").value=
     currentData.lyDo;
+
+  const correctionBox =
+    document.getElementById("correctionBox");
+
+  const correctionNote =
+    document.getElementById("correctionNote");
+
+  const correctionContent =
+    String(currentData.ghiChu || "").trim();
+
+  correctionNote.textContent =
+    correctionContent;
+
+  correctionBox.style.display =
+    correctionContent === "" ? "none" : "block";
 
   document.getElementById("progressText").innerText =
   "Đã xử lý "

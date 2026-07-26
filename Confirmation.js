@@ -1203,10 +1203,10 @@ function formatConfirmationTime_(value) {
 
 function formatStoredCorrection_(note, submittedAt) {
 
-  return "Nội dung đính chính:\n" +
-    note +
-    "\n\nThời gian gửi đính chính:\n" +
-    formatConfirmationTime_(submittedAt);
+  return "Thời gian gửi đính chính: " +
+    formatConfirmationTime_(submittedAt) +
+    "\n\n" +
+    note;
 }
 
 function isStoredCorrectionNote_(noteCell) {
@@ -1256,6 +1256,29 @@ function getStoredCorrection_(row) {
     : storedContent.substring(
       contentIndex + contentMarker.length
     ).trim();
+  const newTimeMarker = "Thời gian gửi đính chính: ";
+
+  if (correctionText.indexOf(newTimeMarker) === 0) {
+    const contentSeparator = correctionText.indexOf("\n\n");
+
+    if (contentSeparator === -1) {
+      return {
+        content: "",
+        submittedAt: correctionText.substring(
+          newTimeMarker.length
+        ).trim()
+      };
+    }
+
+    return {
+      content: correctionText.substring(contentSeparator + 2).trim(),
+      submittedAt: correctionText.substring(
+        newTimeMarker.length,
+        contentSeparator
+      ).trim()
+    };
+  }
+
   const timeMarker = "\n\nThời gian gửi đính chính:\n";
   const timeIndex = correctionText.lastIndexOf(timeMarker);
 
