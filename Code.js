@@ -12,6 +12,8 @@
 
 /******************** CẤU HÌNH ********************/
 
+const DOCUMENT_LOCK_TIMEOUT_MS = 1000;
+
 /*****************************************************
  * Trigger chính
  * Installable Trigger:
@@ -3592,7 +3594,11 @@ function acceptApplication(targetRow){
   const totalStart = Date.now();
   const lock = LockService.getDocumentLock();
 
-  lock.waitLock(30000);
+  if (!lock.tryLock(DOCUMENT_LOCK_TIMEOUT_MS)) {
+    throw new Error(
+      "Đang có tác vụ khác xử lý dữ liệu phúc khảo. Vui lòng thử lại sau."
+    );
+  }
 
   try {
     const config = getConfig_();
@@ -4604,8 +4610,10 @@ function processCancellationByCitizenId_(cccd, audit, options) {
     ? null
     : LockService.getDocumentLock();
 
-  if (lock) {
-    lock.waitLock(30000);
+  if (lock && !lock.tryLock(DOCUMENT_LOCK_TIMEOUT_MS)) {
+    throw new Error(
+      "Đang có tác vụ khác xử lý dữ liệu phúc khảo. Vui lòng thử lại sau."
+    );
   }
 
   try {
