@@ -280,7 +280,7 @@
 <? if (data.canAccept) { ?>
 
 <button
-onclick="acceptApplication()"
+onclick="acceptApplication(this)"
 style="
 background:#1a73e8;
 color:white;
@@ -289,6 +289,7 @@ padding:10px 18px;
 border-radius:6px;
 cursor:pointer;
 margin-right:8px;
+min-width:132px;
 ">
 
 ✅ Tiếp nhận đơn
@@ -308,7 +309,16 @@ onclick="google.script.host.close()"
 </div>
 <script>
 
-function acceptApplication(){
+function acceptApplication(button){
+
+  if (button.disabled) {
+    return;
+  }
+
+  const originalText = button.textContent;
+  button.style.width = button.offsetWidth + "px";
+  button.textContent = "Đang xử lý...";
+  button.disabled = true;
 
   google.script.run
 
@@ -323,6 +333,8 @@ function acceptApplication(){
     .withFailureHandler(function(err){
 
       alert(err.message);
+      button.textContent = originalText;
+      button.disabled = false;
 
     })
 

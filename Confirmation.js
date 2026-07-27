@@ -19,6 +19,16 @@ const CONFIRM_STATUS = {
   OK: "OK",
   CORRECTION: "Đính chính"
 };
+const REPLACED_APPLICATION_MESSAGE =
+  "Mã đơn này đã được thay thế bởi một đơn mới hơn. " +
+  "Vui lòng kiểm tra và sử dụng đúng email xác nhận tương ứng với mã đơn mới nhất.";
+const REPLACED_APPLICATION_EVENT_ACTION =
+  "Đơn đã được thay thế";
+const WITHDRAWN_APPLICATION_EVENT_ACTIONS = [
+  "Huỷ đơn",
+  "Hủy đơn",
+  "Rút đơn phúc khảo"
+];
 
 
 /*****************************************************
@@ -316,7 +326,14 @@ function openConfirmation(token, action) {
   const row = findConfirmationRowByToken_(token);
 
   if (!row) {
-    if (isRevokedConfirmationToken_(token)) {
+    const inactiveReason =
+      getInactiveConfirmationTokenReason_(token);
+
+    if (inactiveReason === "replaced") {
+      return showReplacedApplicationPage_();
+    }
+
+    if (inactiveReason === "withdrawn") {
       return showWithdrawnApplicationPage_();
     }
 
@@ -619,6 +636,16 @@ function showWithdrawnApplicationPage_() {
   );
 }
 
+function showReplacedApplicationPage_() {
+
+  return renderConfirmationPage_(
+    null,
+    "Mã đơn đã được thay thế",
+    REPLACED_APPLICATION_MESSAGE,
+    "warning"
+  );
+}
+
 function showConfirmationErrorPage_() {
 
   return renderConfirmationPage_(
@@ -640,13 +667,20 @@ function confirmApplication_(token) {
   lock.waitLock(30000);
 
   try {
-    assertStudentButtonDeadlineOpen_(true);
     const row = findConfirmationRowByToken_(token);
 
     if (!row) {
+      if (
+        getInactiveConfirmationTokenReason_(token) === "replaced"
+      ) {
+        throw new Error(REPLACED_APPLICATION_MESSAGE);
+      }
+
+      assertStudentButtonDeadlineOpen_(true);
       return false;
     }
 
+    assertStudentButtonDeadlineOpen_(true);
     const sheet = getConfirmationSheet_();
     const map = getConfirmationColumnMap_();
     const statusCol = map["Xác nhận nguyện vọng phúc khảo"];
@@ -730,11 +764,11 @@ function findConfirmationRowByToken_(token) {
   return null;
 }
 
-function isRevokedConfirmationToken_(token) {
+function getInactiveConfirmationTokenReason_(token) {
   const normalizedToken = String(token || "").trim();
 
   if (normalizedToken === "") {
-    return false;
+    return null;
   }
 
   try {
@@ -743,7 +777,7 @@ function isRevokedConfirmationToken_(token) {
       .getSheetByName(EVENT_LOG_SHEET_NAME);
 
     if (!sheet) {
-      return false;
+      return null;
     }
 
     const existingHeaders = sheet
@@ -766,31 +800,67 @@ function isRevokedConfirmationToken_(token) {
     const lastRow = sheet.getLastRow();
 
     if (lastRow <= 1) {
-      return false;
+      return null;
     }
 
-    const revokedTokenValues = sheet
+    const eventValues = sheet
       .getRange(
         2,
-        EVENT_LOG_HEADERS.length,
+        1,
         lastRow - 1,
-        1
+        EVENT_LOG_HEADERS.length
       )
       .getDisplayValues();
+    const actionIndex = EVENT_LOG_HEADERS.indexOf("Hành động");
+    const revokedTokenIndex = EVENT_LOG_HEADERS.indexOf(
+      "Mã xác nhận đã thu hồi"
+    );
+    let hasReplacedEvent = false;
+    let hasWithdrawnEvent = false;
 
-    return revokedTokenValues.some(function(row) {
-      return String(row[0])
+    eventValues.forEach(function(row) {
+      const tokenMatches = String(row[revokedTokenIndex])
         .split(",")
         .some(function(storedToken) {
           return storedToken.trim() === normalizedToken;
         });
+
+      if (!tokenMatches) {
+        return;
+      }
+
+      const action = String(row[actionIndex]).trim();
+
+      if (action === REPLACED_APPLICATION_EVENT_ACTION) {
+        hasReplacedEvent = true;
+      }
+
+      if (
+        WITHDRAWN_APPLICATION_EVENT_ACTIONS.indexOf(action) !== -1
+      ) {
+        hasWithdrawnEvent = true;
+      }
     });
+
+    if (hasWithdrawnEvent) {
+      return "withdrawn";
+    }
+
+    if (hasReplacedEvent) {
+      return "replaced";
+    }
+
+    return null;
   } catch (error) {
     Logger.log(
       "Không thể kiểm tra mã xác nhận đã thu hồi: " + error
     );
-    return false;
+    return null;
   }
+}
+
+function isRevokedConfirmationToken_(token) {
+  return getInactiveConfirmationTokenReason_(token) !== null;
 }
 
 function renderConfirmationPage_(row, title, message, status, options) {
@@ -969,20 +1039,28 @@ function submitCorrection_(token, note) {
   const config = getConfig_();
   const normalizedNote = String(note || "").trim();
 
-  if (normalizedNote === "") {
-    throw new Error("Vui lòng nhập nội dung đính chính.");
-  }
-
   const lock = LockService.getDocumentLock();
 
   lock.waitLock(30000);
 
   try {
-    assertStudentButtonDeadlineOpen_(true);
     const row = findConfirmationRowByToken_(token);
 
     if (!row) {
+      if (
+        getInactiveConfirmationTokenReason_(token) === "replaced"
+      ) {
+        throw new Error(REPLACED_APPLICATION_MESSAGE);
+      }
+
+      assertStudentButtonDeadlineOpen_(true);
       throw new Error("Liên kết không hợp lệ hoặc hồ sơ không tồn tại.");
+    }
+
+    assertStudentButtonDeadlineOpen_(true);
+
+    if (normalizedNote === "") {
+      throw new Error("Vui lòng nhập nội dung đính chính.");
     }
 
     const sheet = getConfirmationSheet_();
@@ -1082,16 +1160,24 @@ function submitWithdrawal(token) {
   lock.waitLock(30000);
 
   try {
-    assertStudentButtonDeadlineOpen_(true);
-
     const row = findConfirmationRowByToken_(normalizedToken);
 
     if (!row) {
+      if (
+        getInactiveConfirmationTokenReason_(
+          normalizedToken
+        ) === "replaced"
+      ) {
+        throw new Error(REPLACED_APPLICATION_MESSAGE);
+      }
+
+      assertStudentButtonDeadlineOpen_(true);
       throw new Error(
         "Liên kết không hợp lệ hoặc hồ sơ không còn khả dụng."
       );
     }
 
+    assertStudentButtonDeadlineOpen_(true);
     const sheet = getConfirmationSheet_();
     const map = getConfirmationColumnMap_();
     const cccdCol =

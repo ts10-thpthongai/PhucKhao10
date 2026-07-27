@@ -3666,6 +3666,7 @@ function acceptApplication(targetRow){
     }
 
     const replacedRanges = [];
+    const replacedApplicationIds = [];
     let shouldAcceptTarget = false;
 
     const updateStart = Date.now();
@@ -3694,6 +3695,14 @@ function acceptApplication(targetRow){
 
       }
       else{
+
+        if (
+          String(row[paperCol]).trim() !== "Đã thay thế"
+        ) {
+          replacedApplicationIds.push(
+            String(row[maDonCol]).trim()
+          );
+        }
 
         row[paperCol] = "Đã thay thế";
         replacedRanges.push(
@@ -3727,6 +3736,7 @@ function acceptApplication(targetRow){
     }
 
     const updateDuration = Date.now() - updateStart;
+    logReplacedConfirmationTokens_(replacedApplicationIds);
     const rebuildStart = Date.now();
     rebuildAcceptedList(values, headerMap);
     const rebuildDuration = Date.now() - rebuildStart;
@@ -3757,6 +3767,131 @@ function acceptApplication(targetRow){
     lock.releaseLock();
   }
 
+}
+
+function logReplacedConfirmationTokens_(applicationIds) {
+  if (!applicationIds || applicationIds.length === 0) {
+    return;
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const data3 = ss.getSheetByName("Data3");
+
+  if (!data3 || data3.getLastRow() <= 1) {
+    return;
+  }
+
+  const data3Map = getColumnMap_(data3);
+  const applicationIdCol = data3Map["Mã đơn"];
+  const tokenCol = data3Map["Mã xác nhận"];
+  const cccdCol =
+    data3Map["Số căn cước (hoặc mã định danh cá nhân)"];
+  const nameCol = data3Map["Họ tên"];
+
+  if (!applicationIdCol || !tokenCol) {
+    throw new Error(
+      'Data3 thiếu cột "Mã đơn" hoặc "Mã xác nhận".'
+    );
+  }
+
+  const applicationIdSet = new Set(
+    applicationIds.map(function(applicationId) {
+      return String(applicationId).trim();
+    })
+  );
+  const data3Values = data3
+    .getRange(
+      2,
+      1,
+      data3.getLastRow() - 1,
+      data3.getLastColumn()
+    )
+    .getValues();
+  const candidates = data3Values.filter(function(row) {
+    return (
+      applicationIdSet.has(
+        String(row[applicationIdCol - 1]).trim()
+      ) &&
+      String(row[tokenCol - 1]).trim() !== ""
+    );
+  });
+
+  if (candidates.length === 0) {
+    return;
+  }
+
+  const eventSheet = getOrCreateEventLogSheet_();
+  const eventValues = eventSheet.getLastRow() > 1
+    ? eventSheet
+      .getRange(
+        2,
+        1,
+        eventSheet.getLastRow() - 1,
+        EVENT_LOG_HEADERS.length
+      )
+      .getDisplayValues()
+    : [];
+  const actionIndex = EVENT_LOG_HEADERS.indexOf("Hành động");
+  const revokedTokenIndex = EVENT_LOG_HEADERS.indexOf(
+    "Mã xác nhận đã thu hồi"
+  );
+  const loggedTokens = new Set();
+
+  eventValues.forEach(function(row) {
+    if (
+      String(row[actionIndex]).trim() !==
+      "Đơn đã được thay thế"
+    ) {
+      return;
+    }
+
+    String(row[revokedTokenIndex])
+      .split(",")
+      .forEach(function(token) {
+        const normalizedToken = token.trim();
+
+        if (normalizedToken !== "") {
+          loggedTokens.add(normalizedToken);
+        }
+      });
+  });
+
+  const internalUser = getCurrentInternalUser_();
+
+  candidates.forEach(function(row) {
+    const applicationId = String(
+      row[applicationIdCol - 1]
+    ).trim();
+    const token = String(row[tokenCol - 1]).trim();
+
+    if (
+      !applicationIdSet.has(applicationId) ||
+      token === "" ||
+      loggedTokens.has(token)
+    ) {
+      return;
+    }
+
+    appendEventLog_(
+      {
+        time: new Date(),
+        cccd: cccdCol
+          ? row[cccdCol - 1]
+          : "",
+        hoTen: nameCol
+          ? row[nameCol - 1]
+          : "",
+        applicationIds: [applicationId],
+        action: "Đơn đã được thay thế",
+        role: internalUser.role,
+        actor: internalUser.email,
+        source: "Tiếp nhận đơn giấy",
+        revokedTokens: [token]
+      },
+      eventSheet
+    );
+    loggedTokens.add(token);
+  });
 }
 
 
